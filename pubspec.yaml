@@ -1,0 +1,44 @@
+name: flutter_application_1
+description: "A new Flutter project."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.10.7
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  # AGREGA flutter_launcher_icons AQUÍ
+  flutter_launcher_icons: ^0.13.1
+
+# ==============================================
+# ¡IMPORTANTE! flutter_icons debe estar AQUÍ,
+# FUERA de la sección 'flutter:'
+# ==============================================
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/icon.png"
+  adaptive_icon_background: "#FFFFFF"
+  # Solo incluye adaptive_icon_foreground si TIENES el archivo
+  # Si no lo tienes, elimina o comenta esta línea:
+  # adaptive_icon_foreground: "assets/icon/icon_foreground.png"
+
+# ==============================================
+# La sección 'flutter:' va SEPARADA, después
+# ==============================================
+flutter:
+  uses-material-design: true
+
+  # Si vas a usar assets, agrégalos aquí DENTRO de 'flutter:'
+  assets:
+    - assets/icon/icon.png
+    # Si tienes icon_foreground.png, agrégalo también:
+    # - assets/icon/icon_foreground.png
