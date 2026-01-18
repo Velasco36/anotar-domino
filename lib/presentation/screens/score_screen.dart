@@ -15,26 +15,94 @@ class ScoreScreen extends StatefulWidget {
 class _ScoreScreenState extends State<ScoreScreen> {
   int teamAlphaScore = 0;
   int teamBravoScore = 0;
-  List<int?> matchHistory = List<int?>.filled(9, null);
+
+  // ✅ Listas dinámicas - empiezan vacías y crecen según sea necesario
+  List<int?> matchHistory = [];
+  List<bool?> matchTeams = []; // true = Alpha, false = Bravo, null = Empate
+  List<bool> matchDeleted = []; // true = tachado/cancelado
 
   String teamAlphaName = 'Team 1';
   String teamBravoName = 'Team 2';
 
-  bool isAlphaTurn = true;
+  // ✅ Función auxiliar para asegurar que las listas tengan el tamaño necesario
+  void _ensureListsSize(int requiredIndex) {
+    while (matchHistory.length <= requiredIndex) {
+      matchHistory.add(null);
+      matchTeams.add(null);
+      matchDeleted.add(false);
+    }
+  }
 
   void _resetScores() {
     setState(() {
       teamAlphaScore = 0;
       teamBravoScore = 0;
-      matchHistory = List<int?>.filled(9, null);
-      isAlphaTurn = true;
+      matchHistory.clear();
+      matchTeams.clear();
+      matchDeleted.clear();
     });
   }
 
-  void _updateMatchHistory(int index, int? currentValue) {
+  Future<void> _updateMatchHistory(int index, int? currentValue) async {
+    // Si la celda está vacía, no hacer nada
+    if (currentValue == null) return;
+
+    // Calcular el número de partida basado en el índice
+    int matchNumber = (index ~/ 3) + 1;
+
+    // Mostrar diálogo para editar o tachar
+    final result = await showDialog<String>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Match $matchNumber'),
+          content: Text(
+            matchDeleted[index]
+                ? 'This match is crossed out.\n\nWhat would you like to do?'
+                : 'Current points: $currentValue\n\nWhat would you like to do?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'strike'),
+              child: Text(
+                matchDeleted[index] ? 'Restore' : 'Strike Through',
+                style: TextStyle(
+                  color: matchDeleted[index] ? Colors.green : Colors.red,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'cancel'),
+              child: Text('Cancel'),
+            ),
+            if (!matchDeleted[index])
+              TextButton(
+                onPressed: () => Navigator.pop(context, 'edit'),
+                child: Text('Edit'),
+              ),
+          ],
+        );
+      },
+    );
+
+    if (result == 'strike') {
+      _toggleStrikeThrough(index);
+    } else if (result == 'edit') {
+      _editMatchHistory(index, currentValue);
+    }
+  }
+
+  void _toggleStrikeThrough(int index) {
+    int matchNumber = (index ~/ 3) + 1;
+
     setState(() {
-      matchHistory[index] = currentValue == null ? 5 : null;
+      matchDeleted[index] = !matchDeleted[index];
     });
+
+    String message = matchDeleted[index]
+        ? 'Match $matchNumber crossed out (score unchanged)'
+        : 'Match $matchNumber restored';
+    _showSnackBar(message);
   }
 
   void _showSnackBar(String message) {
@@ -44,31 +112,80 @@ class _ScoreScreenState extends State<ScoreScreen> {
   }
 
   // Función para agregar puntos al historial
-void _addToHistory(int points, bool isAlpha) {
-    int? emptyIndex;
-    for (int i = 0; i < matchHistory.length; i++) {
-      if (matchHistory[i] == null) {
-        emptyIndex = i;
+  void _addToHistory(int points, bool isAlpha) {
+    // Buscar la primera partida (fila) vacía
+    int? emptyMatchRow;
+    for (int row = 0; ; row++) {
+      int baseIndex = row * 3;
+      int leftIndex = baseIndex; // Team 1 position
+      int centerIndex = baseIndex + 1; // Tie position
+      int rightIndex = baseIndex + 2; // Team 2 position
+
+      // ✅ Asegurar que las listas tengan el tamaño necesario
+      _ensureListsSize(rightIndex);
+
+      // Verificar si esta fila está completamente vacía
+      if (matchHistory[leftIndex] == null &&
+          matchHistory[centerIndex] == null &&
+          matchHistory[rightIndex] == null) {
+        emptyMatchRow = row;
         break;
       }
     }
 
-    if (emptyIndex != null) {
-      setState(() {
-        // Usar un método helper - FIX: añadido ! para convertir int? a int
-        _setHistoryValue(emptyIndex!, points);
-        isAlphaTurn = !isAlpha;
-      });
+    int baseIndex = emptyMatchRow * 3;
+    int targetIndex = isAlpha
+        ? baseIndex
+        : baseIndex + 2; // 0 o 2 para left/right
 
-      _showSnackBar(
-        '${isAlpha ? teamAlphaName : teamBravoName} scored $points points in match ${emptyIndex + 1}!',
-      );
-    } else {
-      _showSnackBar('Match history is full! Reset to continue.');
+    setState(() {
+      matchHistory[targetIndex] = points;
+      matchTeams[targetIndex] = isAlpha;
+      matchDeleted[targetIndex] = false;
+    });
+
+    _showSnackBar(
+      '${isAlpha ? teamAlphaName : teamBravoName} scored $points points in match ${emptyMatchRow + 1}!',
+    );
+  }
+
+  // Función para agregar empate/tabla al historial
+  void _addTieToHistory(int points) {
+    // Buscar la primera partida (fila) vacía
+    int? emptyMatchRow;
+    for (int row = 0; ; row++) {
+      int baseIndex = row * 3;
+      int leftIndex = baseIndex;
+      int centerIndex = baseIndex + 1; // Tie position
+      int rightIndex = baseIndex + 2;
+
+      // ✅ Asegurar que las listas tengan el tamaño necesario
+      _ensureListsSize(rightIndex);
+
+      // Verificar si esta fila está completamente vacía
+      if (matchHistory[leftIndex] == null &&
+          matchHistory[centerIndex] == null &&
+          matchHistory[rightIndex] == null) {
+        emptyMatchRow = row;
+        break;
+      }
     }
+
+    int centerIndex = emptyMatchRow * 3 + 1; // Posición central
+
+    setState(() {
+      matchHistory[centerIndex] = points;
+      matchTeams[centerIndex] = null; // null indica empate
+      matchDeleted[centerIndex] = false;
+    });
+
+    _showSnackBar(
+      'Tie registered: Both teams scored $points points in match ${emptyMatchRow + 1}!',
+    );
   }
 
   void _setHistoryValue(int index, int value) {
+    _ensureListsSize(index);
     matchHistory[index] = value;
   }
 
@@ -104,6 +221,23 @@ void _addToHistory(int points, bool isAlpha) {
     }
   }
 
+  // Función para abrir el modal de Empate
+  Future<void> _openTieModal() async {
+    final points = await showPointsModal(
+      context,
+      teamName: 'Tie/Draw',
+      accentColor: Colors.purple,
+    );
+
+    if (points != null && points > 0) {
+      setState(() {
+        teamAlphaScore += points;
+        teamBravoScore += points;
+      });
+      _addTieToHistory(points);
+    }
+  }
+
   void _addQuickPoint(bool isAlpha) {
     setState(() {
       if (isAlpha) {
@@ -113,6 +247,54 @@ void _addToHistory(int points, bool isAlpha) {
       }
     });
     _addToHistory(1, isAlpha);
+  }
+
+  Future<void> _editMatchHistory(int index, int currentValue) async {
+    bool? wasAlpha = matchTeams[index];
+    int matchNumber = (index ~/ 3) + 1;
+
+    String teamName;
+    Color teamColor;
+
+    if (wasAlpha == null) {
+      // Es un empate
+      teamName = 'Tie - Match $matchNumber';
+      teamColor = Colors.purple;
+    } else if (wasAlpha) {
+      teamName = '$teamAlphaName - Match $matchNumber';
+      teamColor = Colors.orange;
+    } else {
+      teamName = '$teamBravoName - Match $matchNumber';
+      teamColor = Colors.blueGrey[700]!;
+    }
+
+    final newPoints = await showPointsModal(
+      context,
+      teamName: teamName,
+      accentColor: teamColor,
+    );
+
+    if (newPoints != null && newPoints > 0 && newPoints != currentValue) {
+      setState(() {
+        int difference = newPoints - currentValue;
+
+        if (wasAlpha == null) {
+          // Empate: ajustar ambos equipos
+          teamAlphaScore += difference;
+          teamBravoScore += difference;
+        } else if (wasAlpha) {
+          teamAlphaScore += difference;
+        } else {
+          teamBravoScore += difference;
+        }
+
+        matchHistory[index] = newPoints;
+      });
+
+      _showSnackBar(
+        'Updated match $matchNumber: $currentValue → $newPoints points',
+      );
+    }
   }
 
   @override
@@ -146,8 +328,6 @@ void _addToHistory(int points, bool isAlpha) {
                     _showSnackBar('$teamAlphaName marked as winner!'),
                 onUndo: () => _undoLastAction(),
               ),
-              SizedBox(height: 20),
-              _buildTurnIndicator(),
             ],
           ),
         ),
@@ -219,16 +399,25 @@ void _addToHistory(int points, bool isAlpha) {
             children: [
               Expanded(
                 child: AddButton(
-                  label: isAlphaTurn ? 'ADD (Turn)' : 'ADD',
+                  label: 'ADD',
                   color: Colors.orange,
                   isFilled: true,
                   onPressed: _openTeamAlphaModal,
                 ),
               ),
-              SizedBox(width: 16),
+              SizedBox(width: 12),
               Expanded(
                 child: AddButton(
-                  label: !isAlphaTurn ? 'ADD (Turn)' : 'ADD',
+                  label: 'TIE',
+                  color: Colors.purple,
+                  isFilled: false,
+                  onPressed: _openTieModal,
+                ),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: AddButton(
+                  label: 'ADD',
                   color: Colors.blueGrey[700]!,
                   isFilled: false,
                   onPressed: _openTeamBravoModal,
@@ -272,36 +461,8 @@ void _addToHistory(int points, bool isAlpha) {
           MatchHistoryGrid(
             history: matchHistory,
             onCellTap: _updateMatchHistory,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTurnIndicator() {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: isAlphaTurn
-            ? Colors.orange.withOpacity(0.1)
-            : Colors.blueGrey.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.swap_horiz,
-            color: isAlphaTurn ? Colors.orange : Colors.blueGrey[700],
-            size: 16,
-          ),
-          SizedBox(width: 8),
-          Text(
-            isAlphaTurn ? "$teamAlphaName's turn" : "$teamBravoName's turn",
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: isAlphaTurn ? Colors.orange : Colors.blueGrey[700],
-            ),
+            matchTeams: matchTeams,
+            deletedMatches: matchDeleted,
           ),
         ],
       ),
@@ -311,12 +472,14 @@ void _addToHistory(int points, bool isAlpha) {
   void _undoLastAction() {
     int? lastIndex;
     int? lastPoints;
+    bool? lastTeam;
 
     // Buscar la última entrada no nula
     for (int i = matchHistory.length - 1; i >= 0; i--) {
       if (matchHistory[i] != null) {
         lastIndex = i;
         lastPoints = matchHistory[i];
+        lastTeam = matchTeams[i];
         break;
       }
     }
@@ -326,20 +489,34 @@ void _addToHistory(int points, bool isAlpha) {
 
       setState(() {
         // Restar puntos del equipo correspondiente
-        if (isAlphaTurn) {
-          teamBravoScore = teamBravoScore - pointsToRemove;
+        if (lastTeam == null) {
+          // Era un empate
+          teamAlphaScore = (teamAlphaScore - pointsToRemove)
+              .clamp(0, double.infinity)
+              .toInt();
+          teamBravoScore = (teamBravoScore - pointsToRemove)
+              .clamp(0, double.infinity)
+              .toInt();
+        } else if (lastTeam) {
+          teamAlphaScore = (teamAlphaScore - pointsToRemove)
+              .clamp(0, double.infinity)
+              .toInt();
         } else {
-          teamAlphaScore = teamAlphaScore - pointsToRemove;
+          teamBravoScore = (teamBravoScore - pointsToRemove)
+              .clamp(0, double.infinity)
+              .toInt();
         }
 
-        // Restaurar el turno
-        isAlphaTurn = !isAlphaTurn;
-
-        // Eliminar del historial - FIX: usar lastIndex! para acceder al índice
+        // Eliminar del historial
         matchHistory[lastIndex!] = null;
+        matchTeams[lastIndex] = null;
+        matchDeleted[lastIndex] = false;
       });
 
-      _showSnackBar('Undo: Removed $pointsToRemove points');
+      String teamName = lastTeam == null
+          ? 'Tie'
+          : (lastTeam ? teamAlphaName : teamBravoName);
+      _showSnackBar('Undo: Removed $pointsToRemove points from $teamName');
     } else {
       _showSnackBar('Nothing to undo!');
     }
