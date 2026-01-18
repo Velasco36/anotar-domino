@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class MatchHistoryGrid extends StatefulWidget {
-  final List<int?> history;
+  final List<int?> history; // Cambiar de List<int> a List<int?>
   final Function(int index, int? value) onCellTap;
 
   const MatchHistoryGrid({
@@ -21,82 +21,130 @@ class _MatchHistoryGridState extends State<MatchHistoryGrid> {
       decoration: BoxDecoration(color: Colors.white),
       child: Column(
         children: [
-          // Primera fila: elementos 0, 1, 2
-          Row(
-            children: [
-              Expanded(child: _buildCell(0)),
-              SizedBox(width: 8),
-              Expanded(child: _buildCell(1)),
-              SizedBox(width: 8),
-              Expanded(child: _buildCell(2)),
-            ],
-          ),
+          // Primera fila: Partida 1 (índices 0, 1, 2)
+          _buildMatchRow(0, 1, 2),
           SizedBox(height: 8),
 
-          // Segunda fila: elementos 3, 4, 5
-          Row(
-            children: [
-              Expanded(child: _buildCell(3)),
-              SizedBox(width: 8),
-              Expanded(child: _buildCell(4)),
-              SizedBox(width: 8),
-              Expanded(child: _buildCell(5)),
-            ],
-          ),
+          // Segunda fila: Partida 4 (índices 3, 4, 5)
+          _buildMatchRow(3, 4, 5),
           SizedBox(height: 8),
 
-          // Tercera fila: elementos 6, 7, 8
-          Row(
-            children: [
-              Expanded(child: _buildCell(6)),
-              SizedBox(width: 8),
-              Expanded(child: _buildCell(7)),
-              SizedBox(width: 8),
-              Expanded(child: _buildCell(8)),
-            ],
-          ),
+          // Tercera fila: Partida 7 (índices 6, 7, 8)
+          _buildMatchRow(6, 7, 8),
         ],
       ),
     );
   }
 
-  Widget _buildCell(int index) {
-    final value = index < widget.history.length ? widget.history[index] : null;
-    final isHighlighted = value != null && [30, 50, 64, 72].contains(value);
+  Widget _buildMatchRow(int leftIndex, int centerIndex, int rightIndex) {
+    return Row(
+      children: [
+        // Columna izquierda: Team 1
+        Expanded(
+          child: _buildTeamCell(
+            value: widget.history[leftIndex],
+            isLeft: true,
+            onTap: () => widget.onCellTap(leftIndex, widget.history[leftIndex]),
+          ),
+        ),
+
+        // Columna central: número de partida
+        Container(
+          width: 60,
+          height: 60,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: Colors.grey.shade50,
+            border: Border.all(color: Colors.grey.shade300, width: 1),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(
+            (leftIndex ~/ 3 + 1).toString(), // Calcular número de partida
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey.shade700,
+            ),
+          ),
+        ),
+
+        // Columna derecha: Team 2
+        Expanded(
+          child: _buildTeamCell(
+            value: widget.history[rightIndex],
+            isLeft: false,
+            onTap: () =>
+                widget.onCellTap(rightIndex, widget.history[rightIndex]),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTeamCell({
+    required int? value,
+    required bool isLeft,
+    required VoidCallback onTap,
+  }) {
+    final hasValue = value != null && value > 0;
 
     return GestureDetector(
-      onTap: () => widget.onCellTap(index, value),
+      onTap: onTap,
       child: Container(
         height: 60,
+        margin: EdgeInsets.symmetric(horizontal: 4),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(4),
-          color: isHighlighted ? Colors.orange : Colors.grey.shade100,
+          color: hasValue
+              ? (isLeft ? Colors.orange : Colors.blueGrey[700])
+              : Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: hasValue
+                ? (isLeft ? Colors.orange.shade300 : Colors.blueGrey[500]!)
+                : Colors.grey.shade300,
+            width: hasValue ? 1.5 : 1,
+          ),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            if (value != null) ...[
+            if (hasValue) ...[
+              // Mostrar valor si existe
               Text(
                 value.toString(),
                 style: TextStyle(
-                  color: isHighlighted ? Colors.white : Colors.black,
-                  fontSize: 20,
+                  color: Colors.white,
+                  fontSize: 22,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              if ([30, 50].contains(value))
-                Text(
-                  'POINTS',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 8,
-                    fontWeight: FontWeight.w600,
-                  ),
+              SizedBox(height: 2),
+              Text(
+                'POINTS',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.9),
+                  fontSize: 8,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.5,
                 ),
+              ),
             ] else ...[
+              // Mostrar equipo si está vacío
+              Text(
+                isLeft ? 'TEAM 1' : 'TEAM 2',
+                style: TextStyle(
+                  color: Colors.grey.shade500,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              SizedBox(height: 4),
               Icon(
-                Icons.sports_volleyball,
-                color: Colors.orange.withOpacity(0.3),
+                Icons.add_circle_outline,
+                color: isLeft
+                    ? Colors.orange.withOpacity(0.3)
+                    : Colors.blueGrey.withOpacity(0.3),
                 size: 20,
               ),
             ],

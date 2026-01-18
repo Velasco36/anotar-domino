@@ -7,38 +7,33 @@ import 'package:flutter_application_1/presentation/screens/action_buttons.dart';
 import 'package:flutter_application_1/presentation/screens/custom_buttons.dart';
 import 'package:flutter_application_1/presentation/screens/points_modal.dart';
 
-// CLASE PRINCIPAL QUE FALTABA
 class ScoreScreen extends StatefulWidget {
   @override
   _ScoreScreenState createState() => _ScoreScreenState();
 }
 
 class _ScoreScreenState extends State<ScoreScreen> {
-  // CORREGIDO: Puntajes iniciales en 0
   int teamAlphaScore = 0;
   int teamBravoScore = 0;
-  List<int?> matchHistory = [];
+  List<int?> matchHistory = List<int?>.filled(9, null);
 
-  // CORREGIDO: Cambiar nombres a Team 1 y Team 2
   String teamAlphaName = 'Team 1';
   String teamBravoName = 'Team 2';
 
   bool isAlphaTurn = true;
-  int lastAddedScore = 0;
 
   void _resetScores() {
     setState(() {
       teamAlphaScore = 0;
       teamBravoScore = 0;
-      matchHistory = []; // Especificar tipo
+      matchHistory = List<int?>.filled(9, null);
       isAlphaTurn = true;
-      lastAddedScore = 0;
     });
   }
 
   void _updateMatchHistory(int index, int? currentValue) {
     setState(() {
-      matchHistory[index] = currentValue == 0 ? 5 : 0;
+      matchHistory[index] = currentValue == null ? 5 : null;
     });
   }
 
@@ -49,8 +44,7 @@ class _ScoreScreenState extends State<ScoreScreen> {
   }
 
   // Función para agregar puntos al historial
-  void _addToHistory(int points, bool isAlpha) {
-    // Buscar el primer espacio vacío en el historial
+void _addToHistory(int points, bool isAlpha) {
     int? emptyIndex;
     for (int i = 0; i < matchHistory.length; i++) {
       if (matchHistory[i] == null) {
@@ -61,15 +55,11 @@ class _ScoreScreenState extends State<ScoreScreen> {
 
     if (emptyIndex != null) {
       setState(() {
-        matchHistory[emptyIndex!] =
-            points; // Agregar ! para indicar que no es null
-        lastAddedScore = points;
-
-        // Alternar turno para la próxima partida
+        // Usar un método helper - FIX: añadido ! para convertir int? a int
+        _setHistoryValue(emptyIndex!, points);
         isAlphaTurn = !isAlpha;
       });
 
-      // Mostrar mensaje informativo
       _showSnackBar(
         '${isAlpha ? teamAlphaName : teamBravoName} scored $points points in match ${emptyIndex + 1}!',
       );
@@ -78,11 +68,15 @@ class _ScoreScreenState extends State<ScoreScreen> {
     }
   }
 
+  void _setHistoryValue(int index, int value) {
+    matchHistory[index] = value;
+  }
+
   // Función para abrir el modal de Team 1
   Future<void> _openTeamAlphaModal() async {
     final points = await showPointsModal(
       context,
-      teamName: teamAlphaName, // Usar variable
+      teamName: teamAlphaName,
       accentColor: Colors.orange,
     );
 
@@ -90,11 +84,7 @@ class _ScoreScreenState extends State<ScoreScreen> {
       setState(() {
         teamAlphaScore += points;
       });
-
-      // Agregar al historial
       _addToHistory(points, true);
-
-      _showSnackBar('Added $points points to $teamAlphaName!');
     }
   }
 
@@ -102,7 +92,7 @@ class _ScoreScreenState extends State<ScoreScreen> {
   Future<void> _openTeamBravoModal() async {
     final points = await showPointsModal(
       context,
-      teamName: teamBravoName, // Usar variable
+      teamName: teamBravoName,
       accentColor: Colors.blueGrey[700]!,
     );
 
@@ -110,28 +100,19 @@ class _ScoreScreenState extends State<ScoreScreen> {
       setState(() {
         teamBravoScore += points;
       });
-
-      // Agregar al historial
       _addToHistory(points, false);
-
-      _showSnackBar('Added $points points to $teamBravoName!');
     }
   }
 
-  // Modificar los botones de +1 para que también agreguen al historial
   void _addQuickPoint(bool isAlpha) {
     setState(() {
       if (isAlpha) {
         teamAlphaScore += 1;
-        _addToHistory(1, true);
       } else {
         teamBravoScore += 1;
-        _addToHistory(1, false);
       }
     });
-    _showSnackBar(
-      'Added 1 point to ${isAlpha ? teamAlphaName : teamBravoName}!',
-    );
+    _addToHistory(1, isAlpha);
   }
 
   @override
@@ -147,35 +128,25 @@ class _ScoreScreenState extends State<ScoreScreen> {
           padding: EdgeInsets.all(16),
           child: Column(
             children: [
-              // Teams Section
               _buildTeamsSection(),
               SizedBox(height: 24),
-
-              // Match History
               _buildMatchHistorySection(),
               SizedBox(height: 24),
-
-              // Quick Add Buttons
               QuickAddButtons(
                 onAddPoints: (points) {
                   setState(() {
                     teamAlphaScore += points;
-                    _addToHistory(points, true);
                   });
-                  _showSnackBar('Added $points points to $teamAlphaName!');
+                  _addToHistory(points, true);
                 },
               ),
               SizedBox(height: 16),
-
-              // Action Buttons
               ActionButtons(
                 onMarkWinner: () =>
                     _showSnackBar('$teamAlphaName marked as winner!'),
                 onUndo: () => _undoLastAction(),
               ),
               SizedBox(height: 20),
-
-              // Indicador de turno (opcional)
               _buildTurnIndicator(),
             ],
           ),
@@ -192,7 +163,6 @@ class _ScoreScreenState extends State<ScoreScreen> {
       ),
       child: Column(
         children: [
-          // League Badge
           Row(
             children: [
               Container(
@@ -220,15 +190,12 @@ class _ScoreScreenState extends State<ScoreScreen> {
             ],
           ),
           SizedBox(height: 20),
-
-          // Teams and Scores
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              // Team 1
               Expanded(
                 child: TeamScoreCard(
-                  teamName: teamAlphaName.toUpperCase(), // Usar variable
+                  teamName: teamAlphaName.toUpperCase(),
                   score: teamAlphaScore,
                   primaryColor: Colors.orange,
                   avatarUrl: 'https://i.pravatar.cc/150?img=12',
@@ -236,10 +203,9 @@ class _ScoreScreenState extends State<ScoreScreen> {
                 ),
               ),
               SizedBox(width: 20),
-              // Team 2
               Expanded(
                 child: TeamScoreCard(
-                  teamName: teamBravoName.toUpperCase(), // Usar variable
+                  teamName: teamBravoName.toUpperCase(),
                   score: teamBravoScore,
                   primaryColor: Colors.blueGrey[700]!,
                   avatarUrl: 'https://i.pravatar.cc/150?img=33',
@@ -249,15 +215,13 @@ class _ScoreScreenState extends State<ScoreScreen> {
             ],
           ),
           SizedBox(height: 20),
-
-          // Add Buttons
           Row(
             children: [
               Expanded(
                 child: AddButton(
                   label: isAlphaTurn ? 'ADD (Turn)' : 'ADD',
                   color: Colors.orange,
-                  isFilled: isAlphaTurn,
+                  isFilled: true,
                   onPressed: _openTeamAlphaModal,
                 ),
               ),
@@ -266,7 +230,7 @@ class _ScoreScreenState extends State<ScoreScreen> {
                 child: AddButton(
                   label: !isAlphaTurn ? 'ADD (Turn)' : 'ADD',
                   color: Colors.blueGrey[700]!,
-                  isFilled: !isAlphaTurn,
+                  isFilled: false,
                   onPressed: _openTeamBravoModal,
                 ),
               ),
@@ -314,7 +278,6 @@ class _ScoreScreenState extends State<ScoreScreen> {
     );
   }
 
-  // Widget para mostrar el indicador de turno
   Widget _buildTurnIndicator() {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -345,11 +308,11 @@ class _ScoreScreenState extends State<ScoreScreen> {
     );
   }
 
-void _undoLastAction() {
-    // Buscar la última entrada no nula
+  void _undoLastAction() {
     int? lastIndex;
     int? lastPoints;
 
+    // Buscar la última entrada no nula
     for (int i = matchHistory.length - 1; i >= 0; i--) {
       if (matchHistory[i] != null) {
         lastIndex = i;
@@ -359,24 +322,24 @@ void _undoLastAction() {
     }
 
     if (lastIndex != null && lastPoints != null) {
-      final int removedPoints = lastPoints;
+      final int pointsToRemove = lastPoints;
 
       setState(() {
         // Restar puntos del equipo correspondiente
         if (isAlphaTurn) {
-          teamBravoScore -= removedPoints;
+          teamBravoScore = teamBravoScore - pointsToRemove;
         } else {
-          teamAlphaScore -= removedPoints;
+          teamAlphaScore = teamAlphaScore - pointsToRemove;
         }
 
         // Restaurar el turno
         isAlphaTurn = !isAlphaTurn;
 
-        // Eliminar del historial
-        matchHistory[lastIndex!] = null; // ✅ Agregar ! después de lastIndex
+        // Eliminar del historial - FIX: usar lastIndex! para acceder al índice
+        matchHistory[lastIndex!] = null;
       });
 
-      _showSnackBar('Undo: Removed $removedPoints points');
+      _showSnackBar('Undo: Removed $pointsToRemove points');
     } else {
       _showSnackBar('Nothing to undo!');
     }
