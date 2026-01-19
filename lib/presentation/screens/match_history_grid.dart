@@ -5,7 +5,6 @@ class MatchHistoryGrid extends StatefulWidget {
   final Function(int index, int? value) onCellTap;
   final List<bool?> matchTeams;
   final List<bool> deletedMatches;
-  final int minRows;
 
   const MatchHistoryGrid({
     Key? key,
@@ -13,7 +12,6 @@ class MatchHistoryGrid extends StatefulWidget {
     required this.onCellTap,
     required this.matchTeams,
     required this.deletedMatches,
-    this.minRows = 6,
   }) : super(key: key);
 
   @override
@@ -22,60 +20,60 @@ class MatchHistoryGrid extends StatefulWidget {
 
 class _MatchHistoryGridState extends State<MatchHistoryGrid> {
   int get numberOfRows {
-    final int totalCellsNeeded = widget.minRows * 3;
+    if (widget.history.isEmpty) return 0;
     final int actualCells = widget.history.length;
-
-    if (actualCells < totalCellsNeeded) {
-      return widget.minRows;
-    } else {
-      return (actualCells / 3).ceil();
-    }
-  }
-
-  void _ensureListSize(int index) {
-    if (index >= widget.history.length) {
-      debugPrint(
-        'Necesitas expandir tus listas al menos hasta el índice $index',
-      );
-      debugPrint('Lista actual tiene ${widget.history.length} elementos');
-      debugPrint('Se necesitan al menos ${index + 1} elementos');
-    }
-  }
-
-  void _printHistoryDebug() {
-    debugPrint('===== MATCH HISTORY DEBUG =====');
-    debugPrint('Historia length: ${widget.history.length}');
-    debugPrint('Filas calculadas: $numberOfRows');
-    debugPrint('Celdas totales necesarias: ${numberOfRows * 3}');
-
-    for (int row = 0; row < numberOfRows; row++) {
-      debugPrint('--- Fila ${row + 1} ---');
-      for (int col = 0; col < 3; col++) {
-        final index = row * 3 + col;
-        final bool indexExists = index < widget.history.length;
-        final score = indexExists ? widget.history[index] : null;
-
-        String team = "null";
-        if (indexExists && index < widget.matchTeams.length) {
-          final teamValue = widget.matchTeams[index];
-          team = teamValue == null ? "Empate" : (teamValue ? "Team1" : "Team2");
-        }
-
-        debugPrint(
-          '  Celda $col (idx $index): ${indexExists ? "✓" : "✗"} - Puntos: $score, Equipo: $team',
-        );
-      }
-    }
-
-    debugPrint('===============================');
+    return (actualCells / 3).ceil();
   }
 
   @override
   Widget build(BuildContext context) {
-    _printHistoryDebug();
+    if (numberOfRows == 0) {
+      return Container(
+        height: 150,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 4,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Center(
+          child: Text(
+            'No hay datos de partidos',
+            style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
+          ),
+        ),
+      );
+    }
+
+    // Calcular alto dinámicamente
+    final double rowHeight = 70.0;
+    final double rowSpacing = 12.0;
+    final double padding = 16.0;
+
+    // Máximo de 5 filas visibles (ajustable según tu necesidad)
+    final int maxVisibleRows = 5;
+    final double maxVisibleHeight =
+        (maxVisibleRows * rowHeight) +
+        ((maxVisibleRows - 1) * rowSpacing) +
+        (padding * 2);
+
+    final double totalContentHeight =
+        (numberOfRows * rowHeight) +
+        ((numberOfRows - 1) * rowSpacing) +
+        (padding * 2);
+
+    // Usar el menor entre el contenido total y el máximo permitido
+    final double containerHeight = totalContentHeight > maxVisibleHeight
+        ? maxVisibleHeight
+        : totalContentHeight;
 
     return Container(
-      constraints: BoxConstraints(maxHeight: 500),
+      height: containerHeight,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -83,30 +81,41 @@ class _MatchHistoryGridState extends State<MatchHistoryGrid> {
           BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
         ],
       ),
-      child: SingleChildScrollView(
-        child: Column(
-          children: List.generate(numberOfRows, (rowIndex) {
-            final baseIndex = rowIndex * 3;
-
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: rowIndex < numberOfRows - 1 ? 12 : 0,
-              ),
-              child: _buildMatchRow(
-                // ✅ AQUÍ SE LLAMA AL MÉTODO
-                leftIndex: baseIndex,
-                centerIndex: baseIndex + 1,
-                rightIndex: baseIndex + 2,
-                matchNumber: rowIndex + 1,
-              ),
-            );
-          }),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: SingleChildScrollView(
+          padding: EdgeInsets.all(padding),
+          physics: const BouncingScrollPhysics(),
+          child: _buildGridContent(),
         ),
       ),
     );
   }
 
-  // ✅ AÑADE ESTE MÉTODO QUE FALTABA
+  Widget _buildGridContent() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(numberOfRows, (rowIndex) {
+        // CAMBIO IMPORTANTE: Usar índice inverso
+        final inverseRowIndex = numberOfRows - rowIndex - 1;
+        final baseIndex = inverseRowIndex * 3;
+
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: rowIndex < numberOfRows - 1 ? 12 : 0,
+          ),
+          child: _buildMatchRow(
+            leftIndex: baseIndex,
+            centerIndex: baseIndex + 1,
+            rightIndex: baseIndex + 2,
+            // CAMBIO: Mostrar número de partido en orden descendente
+            matchNumber: numberOfRows - rowIndex,
+          ),
+        );
+      }),
+    );
+  }
+
   Widget _buildMatchRow({
     required int leftIndex,
     required int centerIndex,
@@ -126,16 +135,12 @@ class _MatchHistoryGridState extends State<MatchHistoryGrid> {
   }
 
   Widget _teamCell(int index, bool isLeft) {
-    _ensureListSize(index);
-
     final bool indexExists = index < widget.history.length;
     final int? value = indexExists ? widget.history[index] : null;
 
     bool? teamValue;
-    if (indexExists) {
-      if (index < widget.matchTeams.length) {
-        teamValue = widget.matchTeams[index];
-      }
+    if (indexExists && index < widget.matchTeams.length) {
+      teamValue = widget.matchTeams[index];
     }
 
     final bool hasValue = value != null && value > 0;
@@ -195,8 +200,6 @@ class _MatchHistoryGridState extends State<MatchHistoryGrid> {
   }
 
   Widget _centerCell(int index, int matchNumber) {
-    _ensureListSize(index);
-
     final bool indexExists = index < widget.history.length;
     final int? value = indexExists ? widget.history[index] : null;
 

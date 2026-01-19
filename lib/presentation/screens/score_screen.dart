@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_application_1/presentation/screens/score_app_bar.dart';
 import 'package:flutter_application_1/presentation/screens/team_score_card.dart';
 import 'package:flutter_application_1/presentation/screens/match_history_grid.dart';
-import 'package:flutter_application_1/presentation/screens/quick_add_buttons.dart';
 import 'package:flutter_application_1/presentation/screens/action_buttons.dart';
 import 'package:flutter_application_1/presentation/screens/custom_buttons.dart';
 import 'package:flutter_application_1/presentation/screens/points_modal.dart';
@@ -314,15 +313,8 @@ class _ScoreScreenState extends State<ScoreScreen> {
               SizedBox(height: 24),
               _buildMatchHistorySection(),
               SizedBox(height: 24),
-              QuickAddButtons(
-                onAddPoints: (points) {
-                  setState(() {
-                    teamAlphaScore += points;
-                  });
-                  _addToHistory(points, true);
-                },
-              ),
-              SizedBox(height: 16),
+
+
               ActionButtons(
                 onMarkWinner: () =>
                     _showSnackBar('$teamAlphaName marked as winner!'),
