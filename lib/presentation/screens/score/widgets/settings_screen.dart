@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/presentation/screens/score_screen.dart'; // Importa ScoreScreen
+import 'package:flutter_application_1/models/player_model.dart'; // Importa Player
+
+
 
 class SettingsScreen extends StatefulWidget {
   @override
@@ -6,12 +10,11 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  bool isTeamMode = true; // ✅ DEFAULT TEAM MODE
+  bool isTeamMode = true;
   int? starterIndex;
-
-  // Para modo individual: guarda qué jugadores están seleccionados
   final List<bool> individualSelections = List.filled(4, false);
 
+  // Player viene de player_model.dart
   final List<Player> players = List.generate(
     4,
     (i) => Player(name: 'Player ${i + 1}'),
@@ -363,6 +366,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   // ===================== START BUTTON =====================
 
+// ===================== START BUTTON =====================
+
   Widget _startButton() {
     bool canStart = isTeamMode
         ? starterIndex != null
@@ -375,7 +380,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
         height: 56,
         width: double.infinity,
         child: ElevatedButton(
-          onPressed: canStart ? () {} : null,
+          onPressed: canStart
+              ? () {
+                  // Obtener los jugadores seleccionados
+                  List<String> selectedNames = [];
+
+                  if (isTeamMode) {
+                    // En modo equipo: todos los jugadores
+                    selectedNames = players.map((p) => p.name).toList();
+                  } else {
+                    // En modo individual: solo los seleccionados
+                    for (int i = 0; i < players.length; i++) {
+                      if (individualSelections[i]) {
+                        selectedNames.add(players[i].name);
+                      }
+                    }
+                  }
+
+                  // Navegar a ScoreScreen con los datos
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ScoreScreen(
+                        players: players, // Lista completa de 4 jugadores
+                        starterIndex: starterIndex!,
+                        isTeamMode: isTeamMode,
+                        selectedNames: selectedNames, // Nombres seleccionados
+                      ),
+                    ),
+                  );
+                }
+              : null,
           style: ElevatedButton.styleFrom(
             backgroundColor: isTeamMode ? Colors.orange : Colors.blue,
             disabledBackgroundColor: Colors.grey[300],
@@ -394,11 +429,3 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 }
 
-// ===================== MODEL =====================
-
-class Player {
-  String name;
-  bool isStarter;
-
-  Player({required this.name, this.isStarter = false});
-}

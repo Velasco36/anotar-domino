@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'settings_screen.dart'; // Importa la pantalla de settings
 
+// En ScoreAppBar (o directamente en ScoreScreen si no usas widget separado):
 class ScoreAppBar extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback onReset;
+  final String? starterInfo; // Nueva propiedad
 
-  ScoreAppBar({required this.onReset});
+  const ScoreAppBar({Key? key, required this.onReset, this.starterInfo})
+    : super(key: key);
 
   @override
   Size get preferredSize => Size.fromHeight(kToolbarHeight);
@@ -12,34 +15,32 @@ class ScoreAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     return AppBar(
-      backgroundColor: Colors.white,
-      elevation: 0,
-      leading: IconButton(
-        icon: Icon(Icons.settings, color: Colors.black),
-        onPressed: () {
-          // Navega a la pantalla de configuración
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => SettingsScreen()),
-          );
-        },
-      ),
-      title: Text(
-        'Puntuación',
-        style: TextStyle(
-          color: Colors.black,
-          fontSize: 18,
-          fontWeight: FontWeight.w600,
-        ),
+      title: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            'PUNTAJE',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          if (starterInfo != null)
+            Text(
+              starterInfo!,
+              style: TextStyle(
+                fontSize: 11,
+                color: Colors.green,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+        ],
       ),
       centerTitle: true,
+      backgroundColor: Colors.white,
+      elevation: 2,
       actions: [
-        TextButton(
+        IconButton(
+          icon: Icon(Icons.refresh, color: Colors.orange),
           onPressed: onReset,
-          child: Text(
-            'RESET',
-            style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
-          ),
         ),
       ],
     );

@@ -6,56 +6,78 @@ class TeamScoreCard extends StatelessWidget {
   final Color primaryColor;
   final String avatarUrl;
   final VoidCallback onAddPoints;
+  final bool hasStarter; // Nueva propiedad
 
-  TeamScoreCard({
+  const TeamScoreCard({
+    Key? key,
     required this.teamName,
     required this.score,
     required this.primaryColor,
     required this.avatarUrl,
     required this.onAddPoints,
-  });
+    this.hasStarter = false,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        // Avatar
-        Container(
-          width: 60,
-          height: 60,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.grey[200]!, width: 2),
-            image: DecorationImage(
-              image: NetworkImage(avatarUrl),
-              fit: BoxFit.cover,
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: hasStarter ? Colors.green : Colors.grey[200]!,
+          width: hasStarter ? 3 : 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Badge de SALIDA si tiene
+          if (hasStarter)
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.symmetric(vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.1),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(11),
+                  topRight: Radius.circular(11),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.sports_soccer, size: 12, color: Colors.green),
+                  SizedBox(width: 4),
+                  Text(
+                    'SALIDA',
+                    style: TextStyle(
+                      color: Colors.green,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          // Resto del contenido de TeamScoreCard...
+          Padding(
+            padding: EdgeInsets.all(16),
+            child: Column(
+              children: [
+                // ... resto del código existente ...
+              ],
             ),
           ),
-        ),
-        SizedBox(height: 8),
-
-        // Team Name
-        Text(
-          teamName,
-          style: TextStyle(
-            color: Colors.grey[500],
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.5,
-          ),
-        ),
-        SizedBox(height: 4),
-
-        // Score
-        Text(
-          score.toString(),
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 36,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
