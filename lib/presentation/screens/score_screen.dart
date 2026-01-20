@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/presentation/screens/score_app_bar.dart';
-import 'package:flutter_application_1/presentation/screens/team_score_card.dart';
-import 'package:flutter_application_1/presentation/screens/match_history_grid.dart';
-import 'package:flutter_application_1/presentation/screens/action_buttons.dart';
-import 'package:flutter_application_1/presentation/screens/custom_buttons.dart';
-import 'package:flutter_application_1/presentation/screens/points_modal.dart';
+import 'package:flutter_application_1/presentation/screens/score/widgets/score_app_bar.dart';
+import 'package:flutter_application_1/presentation/screens/score/widgets/team_score_card.dart';
+import 'package:flutter_application_1/presentation/screens/score/widgets/match_history_grid.dart';
+import 'package:flutter_application_1/presentation/screens/score/widgets/action_buttons.dart';
+import 'package:flutter_application_1/presentation/screens/score/widgets/custom_buttons.dart';
+import 'package:flutter_application_1/presentation/screens/score/widgets/points_modal.dart';
 
 class ScoreScreen extends StatefulWidget {
   @override
@@ -17,7 +17,7 @@ class _ScoreScreenState extends State<ScoreScreen> {
 
   // ✅ Listas dinámicas - empiezan vacías y crecen según sea necesario
   List<int?> matchHistory = [];
-  List<bool?> matchTeams = []; // true = Alpha, false = Bravo, null = Empate
+  List<bool?> matchTeams = []; // true = Alpha, false = Bravo, null = Tabla
   List<bool> matchDeleted = []; // true = tachado/cancelado
 
   String teamAlphaName = 'Team 1';
@@ -49,7 +49,7 @@ class _ScoreScreenState extends State<ScoreScreen> {
     // Calcular el número de partida basado en el índice
     int matchNumber = (index ~/ 3) + 1;
 
-    // Mostrar diálogo para editar o tachar
+    // Mostrar diálogo simple solo para tachar/restaurar
     final result = await showDialog<String>(
       context: context,
       builder: (BuildContext context) {
@@ -57,8 +57,8 @@ class _ScoreScreenState extends State<ScoreScreen> {
           title: Text('Match $matchNumber'),
           content: Text(
             matchDeleted[index]
-                ? 'This match is crossed out.\n\nWhat would you like to do?'
-                : 'Current points: $currentValue\n\nWhat would you like to do?',
+                ? 'This match is crossed out.'
+                : 'Current points: $currentValue',
           ),
           actions: [
             TextButton(
@@ -74,11 +74,6 @@ class _ScoreScreenState extends State<ScoreScreen> {
               onPressed: () => Navigator.pop(context, 'cancel'),
               child: Text('Cancel'),
             ),
-            if (!matchDeleted[index])
-              TextButton(
-                onPressed: () => Navigator.pop(context, 'edit'),
-                child: Text('Edit'),
-              ),
           ],
         );
       },
@@ -86,9 +81,8 @@ class _ScoreScreenState extends State<ScoreScreen> {
 
     if (result == 'strike') {
       _toggleStrikeThrough(index);
-    } else if (result == 'edit') {
-      _editMatchHistory(index, currentValue);
     }
+    // Eliminada la opción 'edit' - ya no hay edición directa
   }
 
   void _toggleStrikeThrough(int index) {
@@ -117,7 +111,7 @@ class _ScoreScreenState extends State<ScoreScreen> {
     for (int row = 0; ; row++) {
       int baseIndex = row * 3;
       int leftIndex = baseIndex; // Team 1 position
-      int centerIndex = baseIndex + 1; // Tie position
+      int centerIndex = baseIndex + 1; // Tabla position
       int rightIndex = baseIndex + 2; // Team 2 position
 
       // ✅ Asegurar que las listas tengan el tamaño necesario
@@ -132,7 +126,7 @@ class _ScoreScreenState extends State<ScoreScreen> {
       }
     }
 
-    int baseIndex = emptyMatchRow * 3;
+    int baseIndex = emptyMatchRow! * 3;
     int targetIndex = isAlpha
         ? baseIndex
         : baseIndex + 2; // 0 o 2 para left/right
@@ -148,14 +142,14 @@ class _ScoreScreenState extends State<ScoreScreen> {
     );
   }
 
-  // Función para agregar empate/tabla al historial
-  void _addTieToHistory(int points) {
+  // Función para agregar tabla al historial
+  void _addTableToHistory(int points) {
     // Buscar la primera partida (fila) vacía
     int? emptyMatchRow;
     for (int row = 0; ; row++) {
       int baseIndex = row * 3;
       int leftIndex = baseIndex;
-      int centerIndex = baseIndex + 1; // Tie position
+      int centerIndex = baseIndex + 1; // Tabla position
       int rightIndex = baseIndex + 2;
 
       // ✅ Asegurar que las listas tengan el tamaño necesario
@@ -170,16 +164,16 @@ class _ScoreScreenState extends State<ScoreScreen> {
       }
     }
 
-    int centerIndex = emptyMatchRow * 3 + 1; // Posición central
+    int centerIndex = emptyMatchRow! * 3 + 1; // Posición central
 
     setState(() {
       matchHistory[centerIndex] = points;
-      matchTeams[centerIndex] = null; // null indica empate
+      matchTeams[centerIndex] = null; // null indica tabla
       matchDeleted[centerIndex] = false;
     });
 
     _showSnackBar(
-      'Tie registered: Both teams scored $points points in match ${emptyMatchRow + 1}!',
+      'Table registered: Both teams scored $points points in match ${emptyMatchRow + 1}!',
     );
   }
 
@@ -220,12 +214,81 @@ class _ScoreScreenState extends State<ScoreScreen> {
     }
   }
 
-  // Función para abrir el modal de Empate
-  Future<void> _openTieModal() async {
+  // Función para manejar EMPATE (coloca 0 puntos automáticamente)
+  void _handleDraw() async {
+    // Mostrar confirmación antes de registrar empate con 0 puntos
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Register Draw'),
+          content: Text(
+            'Do you want to register a draw with 0 points for both teams?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text('Cancelar'),
+            ),
+          ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(
+                'si, Register Draw',
+                style: TextStyle(
+                  color: Colors.white,
+                ), // ✅ TextStyle dentro de Text
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+              ), // ✅ Un solo style
+            )
+          ],
+        );
+      },
+    );
+
+    if (confirm == true) {
+      // Buscar la primera partida (fila) vacía
+      int? emptyMatchRow;
+      for (int row = 0; ; row++) {
+        int baseIndex = row * 3;
+        int leftIndex = baseIndex;
+        int centerIndex = baseIndex + 1; // Tabla position
+        int rightIndex = baseIndex + 2;
+
+        // ✅ Asegurar que las listas tengan el tamaño necesario
+        _ensureListsSize(rightIndex);
+
+        // Verificar si esta fila está completamente vacía
+        if (matchHistory[leftIndex] == null &&
+            matchHistory[centerIndex] == null &&
+            matchHistory[rightIndex] == null) {
+          emptyMatchRow = row;
+          break;
+        }
+      }
+
+      int centerIndex = emptyMatchRow! * 3 + 1; // Posición central
+
+      setState(() {
+        // No se suman puntos a los equipos (0 puntos)
+        matchHistory[centerIndex] = 0;
+        matchTeams[centerIndex] = null; // null indica tabla
+        matchDeleted[centerIndex] = false;
+      });
+
+      _showSnackBar(
+        'Draw registered with 0 points in match ${emptyMatchRow + 1}!',
+      );
+    }
+  }
+
+  // Función para abrir el modal de Tabla (solo si se quieren puntos > 0)
+  Future<void> _openTableModal() async {
     final points = await showPointsModal(
       context,
-      teamName: 'Tie/Draw',
-      accentColor: Colors.purple,
+      teamName: 'Table',
+      accentColor: Colors.orange,
     );
 
     if (points != null && points > 0) {
@@ -233,7 +296,7 @@ class _ScoreScreenState extends State<ScoreScreen> {
         teamAlphaScore += points;
         teamBravoScore += points;
       });
-      _addTieToHistory(points);
+      _addTableToHistory(points);
     }
   }
 
@@ -248,62 +311,11 @@ class _ScoreScreenState extends State<ScoreScreen> {
     _addToHistory(1, isAlpha);
   }
 
-  Future<void> _editMatchHistory(int index, int currentValue) async {
-    bool? wasAlpha = matchTeams[index];
-    int matchNumber = (index ~/ 3) + 1;
-
-    String teamName;
-    Color teamColor;
-
-    if (wasAlpha == null) {
-      // Es un empate
-      teamName = 'Tie - Match $matchNumber';
-      teamColor = Colors.purple;
-    } else if (wasAlpha) {
-      teamName = '$teamAlphaName - Match $matchNumber';
-      teamColor = Colors.orange;
-    } else {
-      teamName = '$teamBravoName - Match $matchNumber';
-      teamColor = Colors.blueGrey[700]!;
-    }
-
-    final newPoints = await showPointsModal(
-      context,
-      teamName: teamName,
-      accentColor: teamColor,
-    );
-
-    if (newPoints != null && newPoints > 0 && newPoints != currentValue) {
-      setState(() {
-        int difference = newPoints - currentValue;
-
-        if (wasAlpha == null) {
-          // Empate: ajustar ambos equipos
-          teamAlphaScore += difference;
-          teamBravoScore += difference;
-        } else if (wasAlpha) {
-          teamAlphaScore += difference;
-        } else {
-          teamBravoScore += difference;
-        }
-
-        matchHistory[index] = newPoints;
-      });
-
-      _showSnackBar(
-        'Updated match $matchNumber: $currentValue → $newPoints points',
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: ScoreAppBar(
-        onReset: _resetScores,
-        onBack: () => Navigator.pop(context),
-      ),
+      appBar: ScoreAppBar(onReset: _resetScores),
       body: SingleChildScrollView(
         child: Padding(
           padding: EdgeInsets.all(16),
@@ -313,8 +325,6 @@ class _ScoreScreenState extends State<ScoreScreen> {
               SizedBox(height: 24),
               _buildMatchHistorySection(),
               SizedBox(height: 24),
-
-
               ActionButtons(
                 onMarkWinner: () =>
                     _showSnackBar('$teamAlphaName marked as winner!'),
@@ -335,32 +345,6 @@ class _ScoreScreenState extends State<ScoreScreen> {
       ),
       child: Column(
         children: [
-          Row(
-            children: [
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.emoji_events, color: Colors.orange, size: 14),
-                    SizedBox(width: 4),
-                    Text(
-                      'Salida',
-                      style: TextStyle(
-                        color: Colors.orange,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
           SizedBox(height: 20),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -399,11 +383,47 @@ class _ScoreScreenState extends State<ScoreScreen> {
               ),
               SizedBox(width: 12),
               Expanded(
-                child: AddButton(
-                  label: 'TIE',
-                  color: Colors.purple,
-                  isFilled: false,
-                  onPressed: _openTieModal,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Colors.blueGrey[400]!,
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: _handleDraw, // Cambiado a _handleDraw
+                      borderRadius: BorderRadius.circular(8),
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          vertical: 12,
+                          horizontal: 16,
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.drag_handle,
+                              color: Colors.blueGrey[700],
+                              size: 20,
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              'EMPATE',
+                              style: TextStyle(
+                                color: Colors.blueGrey[700],
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ),
               SizedBox(width: 12),
@@ -438,15 +458,22 @@ class _ScoreScreenState extends State<ScoreScreen> {
                 right: BorderSide.none,
               ),
             ),
-            child: Text(
-              'Puntuación',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.grey[400],
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 0.5,
-              ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.table_chart, color: Colors.grey[400], size: 18),
+                SizedBox(width: 8),
+                Text(
+                  'Puntuación',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.grey[400],
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ],
             ),
           ),
           SizedBox(height: 16),
@@ -461,7 +488,7 @@ class _ScoreScreenState extends State<ScoreScreen> {
     );
   }
 
-  void _undoLastAction() {
+void _undoLastAction() {
     int? lastIndex;
     int? lastPoints;
     bool? lastTeam;
@@ -480,23 +507,25 @@ class _ScoreScreenState extends State<ScoreScreen> {
       final int pointsToRemove = lastPoints;
 
       setState(() {
-        // Restar puntos del equipo correspondiente
-        if (lastTeam == null) {
-          // Era un empate
-          teamAlphaScore = (teamAlphaScore - pointsToRemove)
-              .clamp(0, double.infinity)
-              .toInt();
-          teamBravoScore = (teamBravoScore - pointsToRemove)
-              .clamp(0, double.infinity)
-              .toInt();
-        } else if (lastTeam) {
-          teamAlphaScore = (teamAlphaScore - pointsToRemove)
-              .clamp(0, double.infinity)
-              .toInt();
-        } else {
-          teamBravoScore = (teamBravoScore - pointsToRemove)
-              .clamp(0, double.infinity)
-              .toInt();
+        // Restar puntos del equipo correspondiente (solo si no es 0)
+        if (lastPoints! > 0) {
+          if (lastTeam == null) {
+            // Era una tabla
+            teamAlphaScore = (teamAlphaScore - pointsToRemove)
+                .clamp(0, double.infinity)
+                .toInt();
+            teamBravoScore = (teamBravoScore - pointsToRemove)
+                .clamp(0, double.infinity)
+                .toInt();
+          } else if (lastTeam!) {
+            teamAlphaScore = (teamAlphaScore - pointsToRemove)
+                .clamp(0, double.infinity)
+                .toInt();
+          } else {
+            teamBravoScore = (teamBravoScore - pointsToRemove)
+                .clamp(0, double.infinity)
+                .toInt();
+          }
         }
 
         // Eliminar del historial
@@ -506,11 +535,16 @@ class _ScoreScreenState extends State<ScoreScreen> {
       });
 
       String teamName = lastTeam == null
-          ? 'Tie'
+          ? 'Tabla' // Traducido de 'Table'
           : (lastTeam ? teamAlphaName : teamBravoName);
-      _showSnackBar('Undo: Removed $pointsToRemove points from $teamName');
+
+      // Texto del snackbar traducido
+      _showSnackBar(
+        'Deshacer: Se eliminaron ${lastPoints == 0 ? 'empate (0 puntos)' : '$pointsToRemove puntos'} de $teamName',
+      );
     } else {
-      _showSnackBar('Nothing to undo!');
+      // Mensaje cuando no hay nada que deshacer
+      _showSnackBar('¡No hay nada para deshacer!');
     }
   }
 }

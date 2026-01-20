@@ -19,6 +19,12 @@ class _PointsModalState extends State<PointsModal> {
 
   void _addDigit(String digit) {
     setState(() {
+      // Validar que no se puedan ingresar más de 2 dígitos
+      if (currentPoints.length >= 2 && currentPoints != '0') {
+        // Si ya tiene 2 dígitos, no agregar más
+        return;
+      }
+
       if (currentPoints == '0') {
         currentPoints = digit;
       } else {
@@ -53,6 +59,7 @@ class _PointsModalState extends State<PointsModal> {
       width: double.infinity,
       decoration: BoxDecoration(
         color: Colors.white,
+        
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(24),
           topRight: Radius.circular(24),
@@ -122,10 +129,9 @@ class _PointsModalState extends State<PointsModal> {
                       decoration: BoxDecoration(
                         color: const Color.fromARGB(255, 255, 255, 255),
                         borderRadius: BorderRadius.circular(12),
-                         border: Border.all(
-                          color: Colors
-                              .grey[300]!, // Un poco más oscuro para que sea visible
-                          width: 0.5, // Muy delgado para que sea sutil
+                        border: Border.all(
+                          color: Colors.grey[300]!,
+                          width: 0.5,
                         ),
                       ),
                       child: Column(
@@ -135,18 +141,63 @@ class _PointsModalState extends State<PointsModal> {
                             style: TextStyle(
                               fontSize: 48,
                               fontWeight: FontWeight.bold,
+                              color: currentPoints.length > 2
+                                  ? Colors
+                                        .red // Cambia a rojo si excede 2 dígitos
+                                  : Colors.black,
                             ),
                           ),
                           SizedBox(height: 4),
-                          Text(
-                            'POINTS',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: widget.accentColor,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1,
-                            ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                'POINTS',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: widget.accentColor,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1,
+                                ),
+                              ),
+                              SizedBox(width: 8),
+                              // Indicador de límite de dígitos
+                              Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[100],
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(color: Colors.grey[300]!),
+                                ),
+                                child: Text(
+                                  '${currentPoints.length}/2',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: currentPoints.length > 2
+                                        ? Colors.red
+                                        : Colors.grey[700],
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
+                          // Mensaje de error si se excede el límite
+                          if (currentPoints.length > 2)
+                            Padding(
+                              padding: EdgeInsets.only(top: 8),
+                              child: Text(
+                                'Máximo 2 dígitos permitidos',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.red,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                     ),
@@ -183,7 +234,9 @@ class _PointsModalState extends State<PointsModal> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
-                        onPressed: _confirmPoints,
+                        onPressed: currentPoints.length <= 2
+                            ? _confirmPoints
+                            : null,
                         icon: Icon(Icons.check_circle, size: 18),
                         label: Text(
                           'CONFIRM POINTS',
@@ -215,28 +268,39 @@ class _PointsModalState extends State<PointsModal> {
   }
 
   Widget _buildNumberButton(String number) {
+    bool isDisabled = currentPoints.length >= 2 && currentPoints != '0';
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () => _addDigit(number),
+        onTap: isDisabled ? null : () => _addDigit(number),
         borderRadius: BorderRadius.circular(12),
         child: Container(
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border.all(color: Colors.grey[300]!, width: 1.5),
+            color: isDisabled ? Colors.grey[100] : Colors.white,
+            border: Border.all(
+              color: isDisabled ? Colors.grey[200]! : Colors.grey[300]!,
+              width: 1.5,
+            ),
             borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.03),
-                blurRadius: 4,
-                offset: Offset(0, 2),
-              ),
-            ],
+            boxShadow: isDisabled
+                ? []
+                : [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.03),
+                      blurRadius: 4,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
           ),
           child: Text(
             number,
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w600,
+              color: isDisabled ? Colors.grey[400] : Colors.black,
+            ),
           ),
         ),
       ),

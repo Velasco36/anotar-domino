@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
+import 'settings_screen.dart'; // Importa la pantalla de settings
 
 class ScoreAppBar extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback onReset;
-  final VoidCallback onBack;
 
-  ScoreAppBar({required this.onReset, required this.onBack});
+  ScoreAppBar({required this.onReset});
 
   @override
   Size get preferredSize => Size.fromHeight(kToolbarHeight);
@@ -15,8 +15,14 @@ class ScoreAppBar extends StatelessWidget implements PreferredSizeWidget {
       backgroundColor: Colors.white,
       elevation: 0,
       leading: IconButton(
-        icon: Icon(Icons.arrow_back, color: Colors.black),
-        onPressed: onBack,
+        icon: Icon(Icons.settings, color: Colors.black),
+        onPressed: () {
+          // Navega a la pantalla de configuración
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => SettingsScreen()),
+          );
+        },
       ),
       title: Text(
         'Puntuación',
