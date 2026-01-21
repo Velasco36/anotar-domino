@@ -20,18 +20,10 @@ class ScoreAppBar extends StatelessWidget implements PreferredSizeWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
-            'PUNTAJE',
+            'DominoPro',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
-          if (starterInfo != null)
-            Text(
-              starterInfo!,
-              style: TextStyle(
-                fontSize: 11,
-                color: Colors.green,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+
         ],
       ),
       centerTitle: true,

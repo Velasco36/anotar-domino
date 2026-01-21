@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 class MatchHistoryGrid extends StatefulWidget {
   final List<int?> history;
-  final Function(int index, int? value) onCellTap;
-  final List<bool?> matchTeams; // true = Team 1, false = Team 2, null = Empate
+  final Function(int index, int? value) onCellTap; // Solo para la "X"
+  final List<bool?> matchTeams;
   final List<bool> deletedMatches;
 
   const MatchHistoryGrid({
@@ -50,8 +50,8 @@ class _MatchHistoryGridState extends State<MatchHistoryGrid> {
     }
 
     final double rowHeight = 55;
-    final double spacing = 8;
-    final double padding = 12;
+    final double spacing = 0;
+    final double padding = 0;
     final int maxVisibleRows = 5;
 
     final double maxHeight =
@@ -67,37 +67,35 @@ class _MatchHistoryGridState extends State<MatchHistoryGrid> {
     return Container(
       height: totalHeight > maxHeight ? maxHeight : totalHeight,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.transparent,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
-        ],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
         child: SingleChildScrollView(
-          padding: EdgeInsets.all(padding),
           child: Column(
             children: List.generate(numberOfRows, (row) {
               final inverseRow = numberOfRows - row - 1;
               final base = inverseRow * 3;
 
-              return Padding(
-                padding: EdgeInsets.only(
-                  bottom: row < numberOfRows - 1 ? spacing : 0,
-                ),
-                child: SizedBox(
-                  height: rowHeight,
-                  child: Row(
-                    children: [
-                      // Columna de "X" - siempre visible
-                      _deleteColumn(base),
-                      // Celdas del partido
-                      _teamCell(base, true),
-                      _centerCell(base + 1, numberOfRows - row),
-                      _teamCell(base + 2, false),
-                    ],
-                  ),
+              final Color rowColor = row % 2 == 0
+                  ? Colors.white
+                  : Colors.grey.shade200;
+
+              return Container(
+                color: rowColor,
+                padding: EdgeInsets.all(0),
+                margin: EdgeInsets.only(bottom: spacing),
+                height: rowHeight,
+                child: Row(
+                  children: [
+                    // Columna de "X" - con GestureDetector
+                    _deleteColumn(base),
+                    // Celdas del partido - SIN GestureDetector
+                    _teamCell(base, true),
+                    _centerCell(base + 1, numberOfRows - row),
+                    _teamCell(base + 2, false),
+                  ],
                 ),
               );
             }),
@@ -116,48 +114,39 @@ class _MatchHistoryGridState extends State<MatchHistoryGrid> {
         : false;
 
     Color bg;
-    Color border;
     Color text;
 
     if (!hasValue) {
-      bg = Colors.grey.shade100;
-      border = Colors.grey.shade300;
+      bg = Colors.transparent;
       text = Colors.grey.shade600;
     } else if (isDeleted) {
-      bg = isLeft
-          ? Colors.orange.withOpacity(0.7)
-          : Colors.blueGrey.withOpacity(0.7);
-      border = isLeft ? Colors.orange.shade800 : Colors.blueGrey.shade800;
-      text = Colors.white.withOpacity(0.8);
+      bg = Colors.grey.shade200;
+      text = Colors.grey[400]!;
     } else {
-      bg = isLeft ? Colors.orange : Colors.blueGrey;
-      border = isLeft ? Colors.orange.shade300 : Colors.blueGrey.shade500!;
-      text = Colors.white;
+      bg = Colors.transparent;
+      text = Colors.grey[600]!;
     }
 
     return Flexible(
       flex: 4,
-      child: GestureDetector(
-        onTap: () => widget.onCellTap(index, value),
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 2),
-          decoration: BoxDecoration(
-            color: bg,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: border, width: isDeleted ? 2 : 1.5),
-          ),
-          child: Center(
-            child: hasValue
-                ? Text(
-                    value.toString(),
-                    style: TextStyle(
-                      color: text,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  )
-                : Icon(Icons.remove, color: Colors.grey),
-          ),
+      child: Container(
+        // Cambiado de GestureDetector a Container
+        margin: const EdgeInsets.symmetric(horizontal: 2),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Center(
+          child: hasValue
+              ? Text(
+                  value.toString(),
+                  style: TextStyle(
+                    color: text,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                )
+              : Icon(Icons.remove, color: Colors.grey[700]),
         ),
       ),
     );
@@ -166,64 +155,59 @@ class _MatchHistoryGridState extends State<MatchHistoryGrid> {
   Widget _centerCell(int index, int matchNumber) {
     final bool exists = index < widget.history.length;
     final int? value = exists ? widget.history[index] : null;
-
-    final bool isTie = exists && index < widget.matchTeams.length
-        ? widget.matchTeams[index] == null
-        : false;
-
+    final bool hasValue = value != null && value > 0;
     final bool isDeleted = exists && index < widget.deletedMatches.length
         ? widget.deletedMatches[index]
         : false;
 
-    if (!isTie || value == null) {
-      return Container(
-        width: 36,
-        margin: const EdgeInsets.symmetric(horizontal: 2),
-        child: _matchNumber(matchNumber),
-      );
+    Color textColor;
+    Color bgColor;
+
+    if (!hasValue) {
+      bgColor = Colors.grey.shade200;
+      textColor = Colors.grey.shade600;
+    } else if (isDeleted) {
+      bgColor = Colors.grey.shade200;
+      textColor = Colors.black;
+    } else {
+      bgColor = Colors.transparent;
+      textColor = Colors.grey[600]!;
     }
 
     return Container(
       width: 36,
       margin: const EdgeInsets.symmetric(horizontal: 2),
-      child: GestureDetector(
-        onTap: () {
-          widget.onCellTap(index, value);
-        },
-        child: Container(
-          decoration: BoxDecoration(
-            color: isDeleted ? Colors.grey.shade300 : Colors.grey.shade100,
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(
-              color: isDeleted ? Colors.grey.shade500 : Colors.grey.shade400,
-              width: isDeleted ? 2 : 1.2,
-            ),
-          ),
-          child: Center(
-            child: Icon(
-              Icons.sync,
-              size: 18,
-              color: isDeleted ? Colors.grey.shade600 : Colors.grey.shade700,
-            ),
-          ),
+      child: Container(
+        // Cambiado de GestureDetector a Container
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(0),
+        ),
+        child: Center(
+          child: hasValue
+              ? Text(
+                  value.toString(),
+                  style: TextStyle(
+                    color: textColor,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                )
+              : _matchNumber(matchNumber),
         ),
       ),
     );
   }
 
-Widget _deleteColumn(int base) {
-    // Verificamos si ALGUNA de las 3 celdas de esta fila está eliminada
+  Widget _deleteColumn(int base) {
     bool hasDeleted = false;
-    int? deletedIndex;
 
+    // Verificar si hay partidos eliminados en esta fila
     for (int i = 0; i < 3; i++) {
       final index = base + i;
       if (index < widget.deletedMatches.length &&
-          widget.deletedMatches[index] &&
-          index < widget.history.length &&
-          widget.history[index] != null) {
+          widget.deletedMatches[index]) {
         hasDeleted = true;
-        deletedIndex = index;
         break;
       }
     }
@@ -233,34 +217,30 @@ Widget _deleteColumn(int base) {
       margin: const EdgeInsets.only(right: 4),
       child: GestureDetector(
         onTap: () {
-          // Solo funciona si hay un partido eliminado
-          if (deletedIndex != null) {
-            widget.onCellTap(deletedIndex, widget.history[deletedIndex]);
-          }
+          // Llama a onCellTap con el índice de la primera celda de la fila
+          widget.onCellTap(base, widget.history[base]);
         },
         child: Center(
           child: Icon(
             Icons.close,
-            color: hasDeleted ? Colors.red.shade400 : Colors.grey.shade600,
+            color: hasDeleted ? Colors.red.shade400 : Colors.grey[400],
             size: 20,
           ),
         ),
       ),
     );
   }
+
   Widget _matchNumber(int number) {
     return Container(
-      decoration: BoxDecoration(
-        color: Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(6)),
       child: Center(
         child: Text(
           number.toString(),
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            color: Colors.grey.shade700,
+            color: Colors.grey[600],
+            fontSize: 16,
           ),
         ),
       ),

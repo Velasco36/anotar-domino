@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_application_1/presentation/screens/score/widgets/score_app_bar.dart';
 import 'package:flutter_application_1/presentation/screens/score/widgets/team_score_card.dart';
 import 'package:flutter_application_1/presentation/screens/score/widgets/match_history_grid.dart';
-import 'package:flutter_application_1/presentation/screens/score/widgets/action_buttons.dart';
 import 'package:flutter_application_1/presentation/screens/score/widgets/custom_buttons.dart';
 import 'package:flutter_application_1/presentation/screens/score/widgets/points_modal.dart';
 import 'package:flutter_application_1/models/player_model.dart';
@@ -36,16 +35,18 @@ class _ScoreScreenState extends State<ScoreScreen> {
 
   String teamAlphaName = '';
   String teamBravoName = '';
+  List<Player> _teamAlphaPlayers = [];
+  List<Player> _teamBravoPlayers = [];
 
   @override
   void initState() {
     super.initState();
     _initializeTeams();
-    print('Alpha team name: $teamAlphaName');
-    print('Bravo team name: $teamBravoName');
-    print('Selected names: ${widget.selectedNames}');
-    print('Players: ${widget.players.map((p) => p.name).toList()}');
+
     _ensureListsSize(2);
+
+     _teamAlphaPlayers = _getAlphaPlayers();
+    _teamBravoPlayers = _getBravoPlayers();
   }
 
   void _initializeTeams() {
@@ -102,6 +103,39 @@ class _ScoreScreenState extends State<ScoreScreen> {
       matchDeleted.add(false);
     }
   }
+
+  void _updateAlphaPlayers(List<Player> updatedPlayers) {
+    setState(() {
+      _teamAlphaPlayers = updatedPlayers
+          .map((p) => Player(name: p.name, isStarter: p.isStarter))
+          .toList();
+
+      // También actualizar la lista principal de players
+      if (widget.isTeamMode) {
+        widget.players[0].name = updatedPlayers[0].name;
+        widget.players[1].name = updatedPlayers[1].name;
+      } else {
+        widget.players[0].name = updatedPlayers[0].name;
+      }
+    });
+  }
+
+  void _updateBravoPlayers(List<Player> updatedPlayers) {
+    setState(() {
+      _teamBravoPlayers = updatedPlayers
+          .map((p) => Player(name: p.name, isStarter: p.isStarter))
+          .toList();
+
+      // También actualizar la lista principal de players
+      if (widget.isTeamMode) {
+        widget.players[2].name = updatedPlayers[0].name;
+        widget.players[3].name = updatedPlayers[1].name;
+      } else {
+        widget.players[1].name = updatedPlayers[0].name;
+      }
+    });
+  }
+
 
   // ✅ Método para obtener los jugadores del equipo Alpha
   List<Player> _getAlphaPlayers() {
@@ -262,47 +296,6 @@ class _ScoreScreenState extends State<ScoreScreen> {
     );
   }
 
-  // Función para agregar tabla al historial
-  void _addTableToHistory(int points) {
-    // Buscar la primera partida (fila) vacía
-    int? emptyMatchRow;
-    for (int row = 0; row < 20; row++) {
-      // Límite de 20 filas máximo
-      int baseIndex = row * 3;
-      int leftIndex = baseIndex;
-      int centerIndex = baseIndex + 1; // Tabla position
-      int rightIndex = baseIndex + 2;
-
-      // ✅ Asegurar que las listas tengan el tamaño necesario
-      _ensureListsSize(rightIndex);
-
-      // Verificar si esta fila está completamente vacía
-      if (matchHistory[leftIndex] == null &&
-          matchHistory[centerIndex] == null &&
-          matchHistory[rightIndex] == null) {
-        emptyMatchRow = row;
-        break;
-      }
-    }
-
-    if (emptyMatchRow == null) {
-      _showSnackBar('No hay espacio para más partidos');
-      return;
-    }
-
-    int centerIndex = emptyMatchRow * 3 + 1; // Posición central
-
-    setState(() {
-      matchHistory[centerIndex] = points;
-      matchTeams[centerIndex] = null; // null indica tabla
-      matchDeleted[centerIndex] = false;
-    });
-
-    _showSnackBar(
-      'Table registered: Both teams scored $points points in match ${emptyMatchRow + 1}!',
-    );
-  }
-
   // Función para abrir el modal de Team 1
   Future<void> _openTeamAlphaModal() async {
     final points = await showPointsModal(
@@ -336,34 +329,93 @@ class _ScoreScreenState extends State<ScoreScreen> {
   }
 
   // Función para manejar EMPATE (coloca 0 puntos automáticamente)
+// Función para manejar EMPATE - versión simplificada
+// Función para manejar EMPATE - versión simplificada
   void _handleDraw() async {
-    // Mostrar confirmación antes de registrar empate con 0 puntos
-    final confirm = await showDialog<bool>(
+    final confirm = await showModalBottomSheet<bool>(
       context: context,
+      isScrollControlled: true,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Register Draw'),
-          content: Text(
-            'Do you want to register a draw with 0 points for both teams?',
+        return Container(
+          padding: const EdgeInsets.all(24.0),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+            ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: Text('Cancelar'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: Text(
-                'si, Register Draw',
-                style: TextStyle(color: Colors.white),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 10),
+              // Línea decorativa superior
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
-            ),
-          ],
+
+              const SizedBox(height: 30),
+
+              const Text(
+                'Puntos iguales',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+
+              const SizedBox(height: 16),
+
+              const Text(
+                'Confirma que los jugadores tienen la misma cantidad de puntos',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16),
+              ),
+
+              const SizedBox(height: 30),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: const Text('Cancelar'),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: const Text('Continuar'),
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 10),
+            ],
+          ),
         );
       },
     );
 
+    // ¡FALTABA ESTA PARTE CRÍTICA!
     if (confirm == true) {
       // Buscar la primera partida (fila) vacía
       int? emptyMatchRow;
@@ -403,92 +455,6 @@ class _ScoreScreenState extends State<ScoreScreen> {
       _showSnackBar(
         'Draw registered with 0 points in match ${emptyMatchRow + 1}!',
       );
-    }
-  }
-
-  // Función para abrir el modal de Tabla (solo si se quieren puntos > 0)
-  Future<void> _openTableModal() async {
-    final points = await showPointsModal(
-      context,
-      teamName: 'Table',
-      accentColor: Colors.orange,
-    );
-
-    if (points != null && points > 0) {
-      setState(() {
-        teamAlphaScore += points;
-        teamBravoScore += points;
-      });
-      _addTableToHistory(points);
-    }
-  }
-
-  void _addQuickPoint(bool isAlpha) {
-    setState(() {
-      if (isAlpha) {
-        teamAlphaScore += 1;
-      } else {
-        teamBravoScore += 1;
-      }
-    });
-    _addToHistory(1, isAlpha);
-  }
-
-  void _undoLastAction() {
-    int? lastIndex;
-    int? lastPoints;
-    bool? lastTeam;
-
-    // Buscar la última entrada no nula
-    for (int i = matchHistory.length - 1; i >= 0; i--) {
-      if (matchHistory[i] != null) {
-        lastIndex = i;
-        lastPoints = matchHistory[i];
-        lastTeam = matchTeams[i];
-        break;
-      }
-    }
-
-    if (lastIndex != null && lastPoints != null) {
-      final int pointsToRemove = lastPoints;
-
-      setState(() {
-        // Restar puntos del equipo correspondiente (solo si no es 0)
-        if (lastPoints! > 0) {
-          if (lastTeam == null) {
-            // Era una tabla
-            teamAlphaScore = (teamAlphaScore - pointsToRemove)
-                .clamp(0, double.infinity)
-                .toInt();
-            teamBravoScore = (teamBravoScore - pointsToRemove)
-                .clamp(0, double.infinity)
-                .toInt();
-          } else if (lastTeam!) {
-            teamAlphaScore = (teamAlphaScore - pointsToRemove)
-                .clamp(0, double.infinity)
-                .toInt();
-          } else {
-            teamBravoScore = (teamBravoScore - pointsToRemove)
-                .clamp(0, double.infinity)
-                .toInt();
-          }
-        }
-
-        // Eliminar del historial
-        matchHistory[lastIndex!] = null;
-        matchTeams[lastIndex] = null;
-        matchDeleted[lastIndex] = false;
-      });
-
-      String teamName = lastTeam == null
-          ? 'Tabla'
-          : (lastTeam ? teamAlphaName : teamBravoName);
-
-      _showSnackBar(
-        'Deshacer: Se eliminaron ${lastPoints == 0 ? 'empate (0 puntos)' : '$pointsToRemove puntos'} de $teamName',
-      );
-    } else {
-      _showSnackBar('¡No hay nada para deshacer!');
     }
   }
 
@@ -533,7 +499,7 @@ class _ScoreScreenState extends State<ScoreScreen> {
     }
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.grey[100],
       appBar: ScoreAppBar(onReset: _resetScores, starterInfo: starterInfo),
       body: SingleChildScrollView(
         child: Padding(
@@ -544,11 +510,6 @@ class _ScoreScreenState extends State<ScoreScreen> {
               SizedBox(height: 24),
               _buildMatchHistorySection(),
               SizedBox(height: 24),
-              ActionButtons(
-                onMarkWinner: () =>
-                    _showSnackBar('${teamAlphaName} marked as winner!'),
-                onUndo: _undoLastAction,
-              ),
             ],
           ),
         ),
@@ -556,12 +517,8 @@ class _ScoreScreenState extends State<ScoreScreen> {
     );
   }
 
-  Widget _buildTeamsSection() {
+Widget _buildTeamsSection() {
     return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-      ),
       child: Column(
         children: [
           SizedBox(height: 20),
@@ -571,10 +528,9 @@ class _ScoreScreenState extends State<ScoreScreen> {
               Expanded(
                 child: TeamScoreCard(
                   teamName: teamAlphaName.toUpperCase(),
-                  players: _getAlphaPlayers(), // ✅ Ahora pasamos la lista de jugadores
+                  players: _getAlphaPlayers(),
                   score: teamAlphaScore,
                   primaryColor: Colors.orange,
-                  onAddPoints: () => _addQuickPoint(true),
                   hasStarter: _alphaHasStarter(),
                 ),
               ),
@@ -582,10 +538,9 @@ class _ScoreScreenState extends State<ScoreScreen> {
               Expanded(
                 child: TeamScoreCard(
                   teamName: teamBravoName.toUpperCase(),
-                  players: _getBravoPlayers(), // ✅ Ahora pasamos la lista de jugadores
+                  players: _getBravoPlayers(),
                   score: teamBravoScore,
                   primaryColor: Colors.blueGrey[700]!,
-                  onAddPoints: () => _addQuickPoint(false),
                   hasStarter: _bravoHasStarter(),
                 ),
               ),
@@ -596,8 +551,9 @@ class _ScoreScreenState extends State<ScoreScreen> {
             children: [
               Expanded(
                 child: AddButton(
-                  label: 'ADD',
+                  label: '',
                   color: Colors.orange,
+                  borderRadius: BorderRadius.circular(30),
                   isFilled: true,
                   onPressed: _openTeamAlphaModal,
                 ),
@@ -606,21 +562,30 @@ class _ScoreScreenState extends State<ScoreScreen> {
               Expanded(
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.transparent,
-                    borderRadius: BorderRadius.circular(8),
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(30), // Más redondeado
                     border: Border.all(
-                      color: Colors.blueGrey[400]!,
+                      color: Colors.grey[400]!, // Gris más claro
                       width: 1.5,
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.3),
+                        spreadRadius: 1,
+                        blurRadius: 5,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
                   ),
                   child: Material(
                     color: Colors.transparent,
                     child: InkWell(
                       onTap: _handleDraw,
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(30), // Más redondeado
+                      splashColor: Colors.grey[200], // Efecto de splash
                       child: Padding(
                         padding: EdgeInsets.symmetric(
-                          vertical: 12,
+                          vertical: 14, // Un poco más de padding vertical
                           horizontal: 16,
                         ),
                         child: Row(
@@ -629,17 +594,9 @@ class _ScoreScreenState extends State<ScoreScreen> {
                             Icon(
                               Icons.drag_handle,
                               color: Colors.blueGrey[700],
-                              size: 20,
+                              size: 22, // Icono un poco más grande
                             ),
                             SizedBox(width: 8),
-                            Text(
-                              'EMPATE',
-                              style: TextStyle(
-                                color: Colors.blueGrey[700],
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                              ),
-                            ),
                           ],
                         ),
                       ),
@@ -648,12 +605,15 @@ class _ScoreScreenState extends State<ScoreScreen> {
                 ),
               ),
               SizedBox(width: 12),
-              Expanded(
+             Expanded(
                 child: AddButton(
-                  label: 'ADD',
-                  color: Colors.blueGrey[700]!,
-                  isFilled: false,
-                  onPressed: _openTeamBravoModal,
+                  label: '',
+                  color: Colors.orange,
+                  borderRadius: BorderRadius.circular(
+                    30,
+                  ), // Ahora esto funcionará
+                  isFilled: true,
+                  onPressed: _openTeamAlphaModal,
                 ),
               ),
             ],
@@ -663,18 +623,18 @@ class _ScoreScreenState extends State<ScoreScreen> {
     );
   }
 
-  Widget _buildMatchHistorySection() {
+
+Widget _buildMatchHistorySection() {
     return Container(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
-            margin: EdgeInsets.symmetric(vertical: 8),
+            margin: EdgeInsets.symmetric(vertical: 0),
             width: double.infinity,
             decoration: BoxDecoration(
               border: Border(
-                top: BorderSide(color: Colors.grey[300]!, width: 1),
-                bottom: BorderSide(color: Colors.grey[300]!, width: 1),
+
                 left: BorderSide.none,
                 right: BorderSide.none,
               ),
