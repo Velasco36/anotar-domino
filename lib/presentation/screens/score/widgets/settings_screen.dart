@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/presentation/screens/score_screen.dart'; // Importa ScoreScreen
+import 'package:flutter_application_1/presentation/screens/score/widgets/score_screen.dart'; // Importa ScoreScreen
 import 'package:flutter_application_1/models/player_model.dart'; // Importa Player
 
 

@@ -4,6 +4,7 @@ import 'package:flutter_application_1/presentation/screens/score/widgets/team_sc
 import 'package:flutter_application_1/presentation/screens/score/widgets/match_history_grid.dart';
 import 'package:flutter_application_1/presentation/screens/score/widgets/custom_buttons.dart';
 import 'package:flutter_application_1/presentation/screens/score/widgets/points_modal.dart';
+import 'package:flutter_application_1/presentation/screens/score/widgets/match_history_modal.dart';
 import 'package:flutter_application_1/models/player_model.dart';
 
 class ScoreScreen extends StatefulWidget {
@@ -191,41 +192,17 @@ class _ScoreScreenState extends State<ScoreScreen> {
     });
   }
 
-  Future<void> _updateMatchHistory(int index, int? currentValue) async {
-    // Si la celda está vacía, no hacer nada
+Future<void> _updateMatchHistory(int index, int? currentValue) async {
     if (currentValue == null) return;
 
-    // Calcular el número de partida basado en el índice
     int matchNumber = (index ~/ 3) + 1;
 
-    // Mostrar diálogo simple solo para tachar/restaurar
-    final result = await showDialog<String>(
+    final result = await MatchHistoryModal.show(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Match $matchNumber'),
-          content: Text(
-            matchDeleted[index]
-                ? 'This match is crossed out.'
-                : 'Current points: $currentValue',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, 'strike'),
-              child: Text(
-                matchDeleted[index] ? 'Restore' : 'Strike Through',
-                style: TextStyle(
-                  color: matchDeleted[index] ? Colors.green : Colors.red,
-                ),
-              ),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, 'cancel'),
-              child: Text('Cancel'),
-            ),
-          ],
-        );
-      },
+      matchNumber: matchNumber,
+      isDeleted: matchDeleted[index],
+      currentPoints: currentValue,
+      // Removimos onStrikeToggle ya que no es necesario
     );
 
     if (result == 'strike') {
