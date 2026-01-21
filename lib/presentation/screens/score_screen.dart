@@ -41,7 +41,10 @@ class _ScoreScreenState extends State<ScoreScreen> {
   void initState() {
     super.initState();
     _initializeTeams();
-    // Inicializar con espacio para al menos una fila
+    print('Alpha team name: $teamAlphaName');
+    print('Bravo team name: $teamBravoName');
+    print('Selected names: ${widget.selectedNames}');
+    print('Players: ${widget.players.map((p) => p.name).toList()}');
     _ensureListsSize(2);
   }
 
@@ -98,6 +101,48 @@ class _ScoreScreenState extends State<ScoreScreen> {
       matchTeams.add(null);
       matchDeleted.add(false);
     }
+  }
+
+  // ✅ Método para obtener los jugadores del equipo Alpha
+  List<Player> _getAlphaPlayers() {
+    List<Player> alphaPlayers = [];
+
+    if (widget.isTeamMode) {
+      // En modo equipo, los jugadores 0 y 1 van a Alpha
+      if (widget.players.length >= 2) {
+        alphaPlayers = [widget.players[0], widget.players[1]];
+      } else if (widget.players.isNotEmpty) {
+        alphaPlayers = [widget.players[0]];
+      }
+    } else {
+      // En modo individual, solo el primer jugador
+      if (widget.players.isNotEmpty) {
+        alphaPlayers = [widget.players[0]];
+      }
+    }
+
+    return alphaPlayers;
+  }
+
+  // ✅ Método para obtener los jugadores del equipo Bravo
+  List<Player> _getBravoPlayers() {
+    List<Player> bravoPlayers = [];
+
+    if (widget.isTeamMode) {
+      // En modo equipo, los jugadores 2 y 3 van a Bravo
+      if (widget.players.length >= 4) {
+        bravoPlayers = [widget.players[2], widget.players[3]];
+      } else if (widget.players.length >= 3) {
+        bravoPlayers = [widget.players[2]];
+      }
+    } else {
+      // En modo individual, solo el segundo jugador
+      if (widget.players.length > 1) {
+        bravoPlayers = [widget.players[1]];
+      }
+    }
+
+    return bravoPlayers;
   }
 
   void _resetScores() {
@@ -526,9 +571,9 @@ class _ScoreScreenState extends State<ScoreScreen> {
               Expanded(
                 child: TeamScoreCard(
                   teamName: teamAlphaName.toUpperCase(),
+                  players: _getAlphaPlayers(), // ✅ Ahora pasamos la lista de jugadores
                   score: teamAlphaScore,
                   primaryColor: Colors.orange,
-                  avatarUrl: 'https://i.pravatar.cc/150?img=12',
                   onAddPoints: () => _addQuickPoint(true),
                   hasStarter: _alphaHasStarter(),
                 ),
@@ -537,9 +582,9 @@ class _ScoreScreenState extends State<ScoreScreen> {
               Expanded(
                 child: TeamScoreCard(
                   teamName: teamBravoName.toUpperCase(),
+                  players: _getBravoPlayers(), // ✅ Ahora pasamos la lista de jugadores
                   score: teamBravoScore,
                   primaryColor: Colors.blueGrey[700]!,
-                  avatarUrl: 'https://i.pravatar.cc/150?img=33',
                   onAddPoints: () => _addQuickPoint(false),
                   hasStarter: _bravoHasStarter(),
                 ),
