@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'presentation/screens/score/widgets/settings_screen.dart'; // Importa SettingsScreen
+
+import 'presentation/screens/score/widgets/team_setup_screen.dart'; // Importa SettingsScreen
 
 void main() => runApp(MyApp());
 
@@ -9,7 +10,12 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Anotar',
-      home: SettingsScreen(), // Ahora SettingsScreen es la pantalla inicial
+      theme: ThemeData(
+        primaryColor: Color(0xFF2563EB),
+        scaffoldBackgroundColor: Color(0xFFF8FAFC),
+        fontFamily: 'Roboto',
+      ),
+      home: TeamSetupScreen(),
     );
   }
 }

@@ -193,22 +193,22 @@ class _ScoreScreenState extends State<ScoreScreen> {
   }
 
 Future<void> _updateMatchHistory(int index, int? currentValue) async {
-    if (currentValue == null) return;
+  if (currentValue == null) return;
 
-    int matchNumber = (index ~/ 3) + 1;
+  int matchNumber = (index ~/ 3) + 1;
 
-    final result = await MatchHistoryModal.show(
-      context: context,
-      matchNumber: matchNumber,
-      isDeleted: matchDeleted[index],
-      currentPoints: currentValue,
-      // Removimos onStrikeToggle ya que no es necesario
-    );
+  final result = await MatchHistoryModal.show(
+    context: context,
+    matchNumber: matchNumber,
+    isDeleted: matchDeleted[index],
+    currentPoints: currentValue,
+    // Removimos onStrikeToggle ya que no es necesario
+  );
 
-    if (result == 'strike') {
-      _toggleStrikeThrough(index);
-    }
+  if (result == 'strike') {
+    _toggleStrikeThrough(index);
   }
+}
 
   void _toggleStrikeThrough(int index) {
     int matchNumber = (index ~/ 3) + 1;
@@ -590,7 +590,7 @@ Widget _buildTeamsSection() {
                     30,
                   ), // Ahora esto funcionará
                   isFilled: true,
-                  onPressed: _openTeamAlphaModal,
+                  onPressed: _openTeamBravoModal,
                 ),
               ),
             ],
