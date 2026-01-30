@@ -14,11 +14,106 @@ class MatchScreen extends StatefulWidget {
 class _MatchScreenState extends State<MatchScreen> {
   int teamAScore = 0;
   int teamBScore = 0;
-  int roundNumber = 1;
+  int teamAWins = 0; // ← NUEVO: Victorias del equipo A
+  int teamBWins = 0; // ← NUEVO: Victorias del equipo B
+  int roundNumber = 0;
   int targetScore = 100;
-  List<Map<String, dynamic>> roundHistory = [
-    {'teamAScore': 15, 'teamBScore': 0, 'round': 4, 'deleted': true},
-  ];
+  int currentTurnIndex = 0;
+  List<Map<String, dynamic>> roundHistory = [];
+
+  String getCurrentTurnPlayer() {
+    final players = [
+      widget.teamData.teamAPlayer1, // 0
+      widget.teamData.teamBPlayer1, // 1
+      widget.teamData.teamAPlayer2, // 2
+      widget.teamData.teamBPlayer2, // 3
+    ];
+
+    // Encontrar el índice del jugador que sale (startingPlayerName)
+    final startingPlayerIndex = players.indexOf(
+      widget.teamData.startingPlayerName,
+    );
+
+    // Si encontramos al startingPlayer en la lista
+    if (startingPlayerIndex != -1) {
+      // Calcular el turno relativo al startingPlayer
+      return players[(startingPlayerIndex + currentTurnIndex) % 4];
+    }
+
+    // Fallback (no debería pasar si startingPlayerName es válido)
+    return players[currentTurnIndex % 4];
+  }
+
+  // ← NUEVO: Función para avanzar al siguiente turno
+  void advanceTurn() {
+    currentTurnIndex++;
+  }
+
+  // ← NUEVO: Función para verificar si alguien ganó la partida
+  void _checkForWinner() {
+    if (teamAScore >= targetScore) {
+      _showWinnerDialog(true);
+    } else if (teamBScore >= targetScore) {
+      _showWinnerDialog(false);
+    }
+  }
+
+  // ← NUEVO: Función para mostrar diálogo de ganador y reiniciar
+  Future<void> _showWinnerDialog(bool isTeamA) async {
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(
+            '¡Partida Ganada!',
+            style: TextStyle(
+              color: const Color(0xFFf97316),
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Text(
+            '${isTeamA ? '${widget.teamData.teamAPlayer1} & ${widget.teamData.teamAPlayer2}' : '${widget.teamData.teamBPlayer1} & ${widget.teamData.teamBPlayer2}'} han ganado esta partida.',
+            style: const TextStyle(fontSize: 14),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _resetMatch();
+              },
+              child: const Text(
+                'Nueva Partida',
+                style: TextStyle(
+                  color: Color(0xFFf97316),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // ← NUEVO: Función para reiniciar la partida
+  void _resetMatch() {
+    setState(() {
+      // Sumar victoria al equipo ganador
+      if (teamAScore >= targetScore) {
+        teamAWins++;
+      } else if (teamBScore >= targetScore) {
+        teamBWins++;
+      }
+
+      // Reiniciar todo para nueva partida
+      teamAScore = 0;
+      teamBScore = 0;
+      roundNumber = 0;
+      currentTurnIndex = 0;
+      roundHistory.clear();
+    });
+  }
 
   // Función para mostrar el modal de puntos
   Future<void> _showPointsModal(bool isTeamA) async {
@@ -48,6 +143,10 @@ class _MatchScreenState extends State<MatchScreen> {
           });
         }
         roundNumber++;
+        advanceTurn();
+
+        // ← NUEVO: Verificar si hay ganador después de sumar puntos
+        _checkForWinner();
       });
     }
   }
@@ -156,6 +255,7 @@ class _MatchScreenState extends State<MatchScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
+                  // Lado izquierdo: SALIDA
                   Row(
                     children: [
                       Container(
@@ -176,7 +276,7 @@ class _MatchScreenState extends State<MatchScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Salida',
+                            'SALIDA',
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
@@ -196,11 +296,40 @@ class _MatchScreenState extends State<MatchScreen> {
                       ),
                     ],
                   ),
+
+                  // Centro: TURN (con el nombre centrado entre SALIDA y ROUND)
+                  Expanded(
+                    child: Center(
+                      child: Column(
+                        children: [
+                          Text(
+                            'TURN',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: slate400,
+                              letterSpacing: 2,
+                            ),
+                          ),
+                          Text(
+                            getCurrentTurnPlayer(),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w900,
+                              color: primaryColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // Lado derecho: ROUND
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        'Round',
+                        'ROUND',
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
@@ -222,7 +351,7 @@ class _MatchScreenState extends State<MatchScreen> {
               ),
             ),
 
-            // Scoreboard Section - MODIFICADO PARA USAR EL MODAL
+            // Scoreboard Section - MODIFICADO PARA INCLUIR WINS
             Container(
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -257,6 +386,39 @@ class _MatchScreenState extends State<MatchScreen> {
                               fontWeight: FontWeight.w900,
                               color: charcoalColor,
                             ),
+                          ),
+                          // ← NUEVO: Wins del equipo A
+                          const SizedBox(height: 4),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                'wins',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: slate400,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
+
+                                child: Text(
+                                  teamAWins.toString(),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: primaryColor,
+                                  ),
+                                ),
+                              ),
+
+                            ],
                           ),
                           const SizedBox(height: 8),
                           SizedBox(
@@ -307,6 +469,38 @@ class _MatchScreenState extends State<MatchScreen> {
                               color: charcoalColor,
                             ),
                           ),
+                          // ← NUEVO: Wins del equipo B
+                          const SizedBox(height: 4),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                'wins',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: slate400,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
+
+                                child: Text(
+                                  teamBWins.toString(),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: primaryColor,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                           const SizedBox(height: 8),
                           SizedBox(
                             width: 40,
@@ -336,308 +530,191 @@ class _MatchScreenState extends State<MatchScreen> {
 
             // Round History Section
             Expanded(
-              child: Container(
-                color: const Color(0xFFf8fafc),
-                child: Column(
-                  children: [
-                    // History Header
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFf8fafc).withOpacity(0.95),
-                        border: Border(
-                          bottom: BorderSide(color: slate200.withOpacity(0.5)),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Tabla de Rondas',
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                itemCount: roundHistory.length,
+                itemBuilder: (context, index) {
+                  final round = roundHistory[index];
+                  final isDeleted = round['deleted'] == true;
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 4),
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: isDeleted
+                          ? slate100.withOpacity(0.4)
+                          : Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: isDeleted ? null : Border.all(color: slate100),
+                      boxShadow: isDeleted
+                          ? null
+                          : [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 2,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
+                    ),
+                    child: Row(
+                      children: [
+                        // Team A Score
+                        Expanded(
+                          flex: 3,
+                          child: Text(
+                            (round['teamAScore'] as int).toString(),
                             style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                              color: slate500,
-                              letterSpacing: 2,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: isDeleted
+                                  ? slate400
+                                  : ((round['teamAScore'] as int) > 0
+                                        ? charcoalColor
+                                        : slate300),
+                              decoration: isDeleted
+                                  ? TextDecoration.lineThrough
+                                  : null,
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-
-                    // History List
-                    Expanded(
-                      child: ListView.builder(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
                         ),
-                        itemCount: roundHistory.length,
-                        itemBuilder: (context, index) {
-                          final round = roundHistory[index];
-                          final isDeleted = round['deleted'] == true;
 
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 4),
-                            padding: const EdgeInsets.all(10),
+                        // Round Number - CENTRADO
+                        Container(
+                          width: 28,
+                          height: 28,
+                          margin: const EdgeInsets.symmetric(horizontal: 8),
+                          decoration: BoxDecoration(
+                            color: isDeleted
+                                ? slate200.withOpacity(0.5)
+                                : slate100,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Center(
+                            child: Text(
+                              isDeleted
+                                  ? '0'
+                                  : (round['round'] as int).toString(),
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: isDeleted
+                                    ? FontWeight.bold
+                                    : FontWeight.w900,
+                                color: slate400,
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        // Team B Score
+                        Expanded(
+                          flex: 3,
+                          child: Text(
+                            (round['teamBScore'] as int).toString(),
+                            textAlign: TextAlign.right,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: isDeleted
+                                  ? slate400
+                                  : ((round['teamBScore'] as int) > 0
+                                        ? charcoalColor
+                                        : slate300),
+                              decoration: isDeleted
+                                  ? TextDecoration.lineThrough
+                                  : null,
+                            ),
+                          ),
+                        ),
+
+                        // Delete Button
+                        const SizedBox(width: 8),
+                        InkWell(
+                          onTap: () {
+                            setState(() {
+                              if (isDeleted) {
+                                // Si ya está eliminado, restaurar
+                                roundHistory[index]['deleted'] = false;
+                                roundNumber++;
+                                advanceTurn();
+                                teamAScore += round['teamAScore'] as int;
+                                teamBScore += round['teamBScore'] as int;
+
+                                // Verificar si hay ganador después de restaurar
+                                _checkForWinner();
+                              } else {
+                                // Marcar como eliminado
+                                roundHistory[index]['deleted'] = true;
+                                roundHistory[index]['round'] = 0;
+                                roundNumber = roundNumber - 1;
+                                teamAScore -= round['teamAScore'] as int;
+                                teamBScore -= round['teamBScore'] as int;
+                              }
+                            });
+                          },
+                          child: Container(
+                            width: 32,
+                            height: 32,
                             decoration: BoxDecoration(
                               color: isDeleted
-                                  ? slate100.withOpacity(0.4)
-                                  : Colors.white,
-                              borderRadius: BorderRadius.circular(8),
-                              border: isDeleted
-                                  ? null
-                                  : Border.all(color: slate100),
-                              boxShadow: isDeleted
-                                  ? null
-                                  : [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.05),
-                                        blurRadius: 2,
-                                        offset: const Offset(0, 1),
-                                      ),
-                                    ],
+                                  ? Colors.green.withOpacity(0.1)
+                                  : Colors.red.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6),
                             ),
-                            child: Row(
-                              children: [
-                                // Team A Score
-                                SizedBox(
-                                  width: MediaQuery.of(context).size.width / 3,
-                                  child: Text(
-                                    (round['teamAScore'] as int).toString(),
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: isDeleted
-                                          ? slate400
-                                          : ((round['teamAScore'] as int) > 0
-                                                ? charcoalColor
-                                                : slate300),
-                                      decoration: isDeleted
-                                          ? TextDecoration.lineThrough
-                                          : null,
-                                    ),
-                                  ),
-                                ),
-
-                                // Round Number
-                                Container(
-                                  width: 28,
-                                  height: 28,
-                                  decoration: BoxDecoration(
-                                    color: isDeleted
-                                        ? slate200.withOpacity(0.5)
-                                        : slate100,
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      (round['round'] as int).toString(),
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: isDeleted
-                                            ? FontWeight.bold
-                                            : FontWeight.w900,
-                                        color: slate400,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-
-                                // Team B Score
-                               SizedBox(
-                                  width: MediaQuery.of(context).size.width / 3,
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.end,
-                                    children: [
-                                      Text(
-                                        (round['teamBScore'] as int).toString(),
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                          color: isDeleted
-                                              ? slate400
-                                              : ((round['teamBScore'] as int) >
-                                                        0
-                                                    ? charcoalColor
-                                                    : slate300),
-                                          decoration: isDeleted
-                                              ? TextDecoration.lineThrough
-                                              : null,
-                                        ),
-                                      ),
-                                      if (isDeleted) ...[
-                                        const SizedBox(width: 8),
-                                        const Icon(
-                                          Icons.delete,
-                                          size: 16,
-                                          color: Colors.red,
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                ),
-                              ],
+                            child: Icon(
+                              isDeleted ? Icons.restore : Icons.delete_outline,
+                              size: 16,
+                              color: isDeleted ? Colors.green : Colors.red,
                             ),
-                          );
-                        },
-                      ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  );
+                },
               ),
             ),
           ],
         ),
       ),
 
-              // Bottom Bar
-          bottomSheet: Container(
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.95),
-            border: Border(top: BorderSide(color: slate100, width: 1)),
-          ),
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  // Equal Button - MODIFICADO
-                  Expanded(
-                    child: TextButton(
-                onPressed: () {
-          setState(() {
-            if (teamAScore == teamBScore) {
-              // Si ya son iguales, registrar 0-0 en el historial
-              roundHistory.insert(0, {
-                'teamAScore': 0,
-                'teamBScore': 0,
-                'round': roundNumber + 1,
-              });
-              // Incrementar el número de ronda
-              roundNumber++;
-            } else {
-
-              // Registrar la diferencia en el historial ANTES de igualar
-              roundHistory.insert(0, {
-                'teamAScore': 0,
-                'teamBScore': 0,
-                'round': roundNumber + 1,
-              });
-
-              // Ahora igualar los marcadores
-              if (teamAScore > teamBScore) {
-                teamBScore += 0;
-              } else {
-                teamAScore += 0;
-              }
-
-              // Incrementar el número de ronda
-              roundNumber++;
-            }
-          });
-        },
-              style: TextButton.styleFrom(
-                backgroundColor: slate100,
-                foregroundColor: slate500,
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.drag_handle, size: 18),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Iguales',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(width: 8),
-
-          // Goat Button
-          Expanded(
-            child: TextButton(
-              onPressed: () {
-                // Lógica para Cabra
-              },
-              style: TextButton.styleFrom(
-                backgroundColor: primaryLightColor,
-                foregroundColor: primaryColor,
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(color: primaryColor.withOpacity(0.1)),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.pets, size: 18),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Cabra',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(width: 8),
-
-          // Delete Button
-    // Delete Button
+      // Bottom Bar
+      bottomSheet: Container(
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.95),
+          border: Border(top: BorderSide(color: slate100, width: 1)),
+        ),
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                // Equal Button
                 Expanded(
                   child: TextButton(
                     onPressed: () {
-                      if (roundHistory.isNotEmpty) {
-                        setState(() {
-                          final lastRound = roundHistory.first;
-                          final teamAPoints = lastRound['teamAScore'] as int;
-                          final teamBPoints = lastRound['teamBScore'] as int;
-
-                          // Verificar si fue una ronda de "igualar"
-                          // Si ambos tienen la misma cantidad de puntos en el historial
-                          if (teamAPoints == teamBPoints && teamAPoints > 0) {
-                            // Fue una ronda donde se igualaron los marcadores
-                            // Necesitamos revertir la igualación
-                            if (teamAScore > teamBScore) {
-                              // Team A tenía más puntos antes
-                              teamBScore -= teamAPoints;
-                            } else if (teamBScore > teamAScore) {
-                              // Team B tenía más puntos antes
-                              teamAScore -= teamBPoints;
-                            }
-                            // Si son iguales, no hacer nada con los marcadores
-                          } else {
-                            // Fue una ronda normal, solo restar los puntos
-                            teamAScore -= teamAPoints;
-                            teamBScore -= teamBPoints;
-                          }
-
-                          roundHistory.removeAt(0);
-                          roundNumber--;
-                        });
-                      }
+                      setState(() {
+                        if (teamAScore == teamBScore) {
+                          roundHistory.insert(0, {
+                            'teamAScore': 0,
+                            'teamBScore': 0,
+                            'round': roundNumber + 1,
+                          });
+                          roundNumber++;
+                          advanceTurn();
+                        } else {
+                          roundHistory.insert(0, {
+                            'teamAScore': 0,
+                            'teamBScore': 0,
+                            'round': roundNumber + 1,
+                          });
+                          roundNumber++;
+                          advanceTurn();
+                        }
+                      });
                     },
                     style: TextButton.styleFrom(
                       backgroundColor: slate100,
@@ -650,10 +727,10 @@ class _MatchScreenState extends State<MatchScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.delete, size: 18),
+                        const Icon(Icons.drag_handle, size: 18),
                         const SizedBox(width: 6),
                         Text(
-                          'Eliminar',
+                          'Iguales',
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
@@ -665,12 +742,46 @@ class _MatchScreenState extends State<MatchScreen> {
                   ),
                 ),
 
-        ],
+                const SizedBox(width: 8),
+
+                // Goat Button
+                Expanded(
+                  child: TextButton(
+                    onPressed: () {
+                      // Lógica para Cabra
+                    },
+                    style: TextButton.styleFrom(
+                      backgroundColor: primaryLightColor,
+                      foregroundColor: primaryColor,
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(color: primaryColor.withOpacity(0.1)),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.pets, size: 18),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Cabra',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
       ),
-      const SizedBox(height: 20),
-    ],
-  ),
-),
     );
   }
 }
