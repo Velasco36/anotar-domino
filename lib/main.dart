@@ -1,6 +1,7 @@
-import 'package:flutter/material.dart';
 
-import 'presentation/screens/score/widgets/team_setup_screen.dart'; // Importa SettingsScreen
+import 'package:flutter/material.dart';
+import 'presentation/screens/score/widgets/team_setup_screen.dart';
+import 'presentation/screens/score/widgets/match_screen.dart';
 
 void main() => runApp(MyApp());
 
@@ -15,7 +16,11 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: Color(0xFFF8FAFC),
         fontFamily: 'Roboto',
       ),
-      home: TeamSetupScreen(),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => TeamSetupScreen(),
+
+      },
     );
   }
 }

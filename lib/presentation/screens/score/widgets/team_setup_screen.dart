@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../../models/team_data.dart';
+import './match_screen.dart';
 
 class TeamSetupScreen extends StatefulWidget {
   @override
@@ -9,11 +11,20 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
   String selectedMode = 'teams';
   String selectedStarter = 'p1';
 
+  // Definir los colores naranja que usarás
+  static const Color primaryOrange = Color(0xFFF97316); // Naranja principal
+  static const Color lightOrange = Color(0xFFFED7AA); // Naranja claro
+  static const Color darkOrange = Color(0xFFEA580C); // Naranja oscuro
+
+  // Definir colores azules que serán reemplazados
+  static const Color oldBlue = Color(0xFF2563EB);
+  static const Color oldLightBlue = Color(0xFF60A5FA);
+
   final TextEditingController teamAPlayer1Controller = TextEditingController(
-    text: 'Alex Johnson',
+    text: 'Alex',
   );
   final TextEditingController teamAPlayer2Controller = TextEditingController(
-    text: 'Jordan Smith',
+    text: 'Jordan',
   );
   final TextEditingController teamBPlayer1Controller = TextEditingController(
     text: 'Taylor',
@@ -23,12 +34,73 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
   );
 
   @override
+  void initState() {
+    super.initState();
+    // Agregar listeners para actualizar la UI cuando cambian los textos
+    teamAPlayer1Controller.addListener(_updateUI);
+    teamAPlayer2Controller.addListener(_updateUI);
+    teamBPlayer1Controller.addListener(_updateUI);
+    teamBPlayer2Controller.addListener(_updateUI);
+  }
+
+  void _updateUI() {
+    // Actualiza la UI cuando cambian los nombres
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  @override
   void dispose() {
+    // Remover los listeners
+    teamAPlayer1Controller.removeListener(_updateUI);
+    teamAPlayer2Controller.removeListener(_updateUI);
+    teamBPlayer1Controller.removeListener(_updateUI);
+    teamBPlayer2Controller.removeListener(_updateUI);
+
     teamAPlayer1Controller.dispose();
     teamAPlayer2Controller.dispose();
     teamBPlayer1Controller.dispose();
     teamBPlayer2Controller.dispose();
     super.dispose();
+  }
+
+  // Método para obtener el nombre según el playerId
+  String _getNameForPlayerId(String playerId) {
+    switch (playerId) {
+      case 'p1':
+        return teamAPlayer1Controller.text;
+      case 'p2':
+        return teamAPlayer2Controller.text;
+      case 'p3':
+        return teamBPlayer1Controller.text;
+      case 'p4':
+        return teamBPlayer2Controller.text;
+      default:
+        return '';
+    }
+  }
+
+  void _startMatch(BuildContext context) {
+    // Crear objeto con los datos del equipo
+    final teamData = TeamData(
+      teamAPlayer1: teamAPlayer1Controller.text,
+      teamAPlayer2: teamAPlayer2Controller.text,
+      teamBPlayer1: teamBPlayer1Controller.text,
+      teamBPlayer2: teamBPlayer2Controller.text,
+      startingPlayerId: selectedStarter,
+      startingPlayerName: _getStartingPlayerName(),
+    );
+
+    // Navegar a la pantalla del partido
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => MatchScreen(teamData: teamData)),
+    );
+  }
+
+  String _getStartingPlayerName() {
+    return _getNameForPlayerId(selectedStarter);
   }
 
   @override
@@ -38,7 +110,7 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
       body: Column(
         children: [
           // Header
-          _buildHeader(),
+          _buildHeader(context),
 
           // Scrollable content
           Expanded(
@@ -57,7 +129,7 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
 
                     SizedBox(height: 24),
 
-                    // Table with players
+                    // Table with players - AHORA USA LOS NOMBRES ACTUALIZADOS
                     _buildTable(),
 
                     SizedBox(height: 32),
@@ -75,13 +147,11 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
       ),
 
       // Bottom button
-      bottomNavigationBar: _buildBottomButton(),
+      bottomNavigationBar: _buildBottomButton(context),
     );
   }
 
-  // ============ Componentes separados ============
-
-  Widget _buildHeader() {
+  Widget _buildHeader(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.8),
@@ -97,10 +167,12 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
               IconButton(
                 icon: Icon(
                   Icons.arrow_back_ios,
-                  color: Color(0xFF2563EB),
+                  color: primaryOrange, // Cambiado a naranja
                   size: 24,
                 ),
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.pop(context);
+                },
               ),
               Text(
                 'Team Setup',
@@ -111,7 +183,7 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
                 ),
               ),
               IconButton(
-                icon: Icon(Icons.settings, color: Color(0xFF2563EB), size: 24),
+                icon: Icon(Icons.settings, color: primaryOrange, size: 24), // Cambiado a naranja
                 onPressed: () {},
               ),
             ],
@@ -162,7 +234,7 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
               fontSize: 14,
               fontWeight: FontWeight.w600,
               color: selectedMode == mode
-                  ? Color(0xFF1A1A1A)
+                  ? primaryOrange // Cambiado a naranja cuando está seleccionado
                   : Color(0xFF64748B),
             ),
           ),
@@ -227,45 +299,45 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
             ),
           ),
 
-          // Players
+          // Players - AHORA USA LOS NOMBRES DE LOS CONTROLLERS
           _buildPlayerSeatPositioned(
             playerId: 'p1',
-            name: 'Alex',
+            name: _getNameForPlayerId('p1'), // Nombre dinámico
             team: 'Team A',
             position: PlayerPosition.bottom,
-            teamColor: Color(0xFF2563EB),
+            teamColor: primaryOrange, // Cambiado a naranja
             bgColor: Color(0xFFF8FAFC),
-            iconColor: Color(0xFFE2E8F0),
+            iconColor: lightOrange, // Cambiado a naranja claro
           ),
 
           _buildPlayerSeatPositioned(
             playerId: 'p2',
-            name: 'Jordan',
+            name: _getNameForPlayerId('p2'), // Nombre dinámico
             team: 'Team A',
             position: PlayerPosition.top,
-            teamColor: Color(0xFF2563EB),
+            teamColor: primaryOrange, // Cambiado a naranja
             bgColor: Color(0xFFF8FAFC),
-            iconColor: Color(0xFFE2E8F0),
+            iconColor: lightOrange, // Cambiado a naranja claro
           ),
 
           _buildPlayerSeatPositioned(
             playerId: 'p3',
-            name: 'Taylor',
+            name: _getNameForPlayerId('p3'), // Nombre dinámico
             team: 'Team B',
             position: PlayerPosition.right,
-            teamColor: Color(0xFF60A5FA),
-            bgColor: Color(0xFFEFF6FF),
-            iconColor: Color(0xFFDBEAFE),
+            teamColor: darkOrange, // Cambiado a naranja oscuro
+            bgColor: Color(0xFFFFEDD5), // Fondo naranja muy claro
+            iconColor: Color(0xFFFDBA74), // Naranja medio
           ),
 
           _buildPlayerSeatPositioned(
             playerId: 'p4',
-            name: 'Casey',
+            name: _getNameForPlayerId('p4'), // Nombre dinámico
             team: 'Team B',
             position: PlayerPosition.left,
-            teamColor: Color(0xFF60A5FA),
-            bgColor: Color(0xFFEFF6FF),
-            iconColor: Color(0xFFDBEAFE),
+            teamColor: darkOrange, // Cambiado a naranja oscuro
+            bgColor: Color(0xFFFFEDD5), // Fondo naranja muy claro
+            iconColor: Color(0xFFFDBA74), // Naranja medio
           ),
         ],
       ),
@@ -344,15 +416,106 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
 
     return GestureDetector(
       onTap: () => setState(() => selectedStarter = playerId),
-      child: PlayerSeatWidget(
-        playerId: playerId,
-        name: name,
-        team: team,
-        teamColor: teamColor,
-        bgColor: bgColor,
-        iconColor: iconColor,
-        isSelected: isSelected,
-        isTop: isTop,
+      child: Container(
+        width: 128,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isTop) ...[
+              Text(
+                team.toUpperCase(),
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.bold,
+                  color: teamColor,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              SizedBox(height: 4),
+            ],
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: bgColor,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isSelected ? primaryOrange : iconColor,
+                      width: 2,
+                    ),
+                    boxShadow: isSelected
+                        ? [
+                            BoxShadow(
+                              color: primaryOrange.withOpacity(0.4),
+                              blurRadius: 20,
+                            ),
+                          ]
+                        : [],
+                  ),
+                  child: Icon(Icons.account_circle, size: 40, color: iconColor),
+                ),
+                Positioned(
+                  top: -4,
+                  right: -4,
+                  child: AnimatedScale(
+                    scale: isSelected ? 1.0 : 0.5,
+                    duration: Duration(milliseconds: 300),
+                    child: AnimatedOpacity(
+                      opacity: isSelected ? 1.0 : 0.0,
+                      duration: Duration(milliseconds: 300),
+                      child: Container(
+                        width: 24,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          color: primaryOrange, // Cambiado a naranja
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 4,
+                            ),
+                          ],
+                        ),
+                        child: Icon(Icons.star, size: 14, color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 8),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  name,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                    color: isSelected ? primaryOrange : Color(0xFF475569),
+                  ),
+                ),
+                SizedBox(width: 4),
+                Icon(Icons.edit, size: 14, color: Color(0xFFCBD5E1)),
+              ],
+            ),
+            if (!isTop) ...[
+              SizedBox(height: 2),
+              Text(
+                team.toUpperCase(),
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.bold,
+                  color: teamColor,
+                  letterSpacing: -0.5,
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -361,22 +524,22 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
     return Row(
       children: [
         Expanded(
-          child: TeamInputCard(
+          child: _buildTeamInputCard(
             title: 'TEAM A PLAYERS',
-            titleColor: Color(0xFF2563EB),
+            titleColor: primaryOrange, // Cambiado a naranja
             backgroundColor: Colors.white,
-            borderColor: Color(0xFFF1F5F9),
+            borderColor: lightOrange.withOpacity(0.5), // Borde naranja claro
             controller1: teamAPlayer1Controller,
             controller2: teamAPlayer2Controller,
           ),
         ),
         SizedBox(width: 12),
         Expanded(
-          child: TeamInputCard(
+          child: _buildTeamInputCard(
             title: 'TEAM B PLAYERS',
-            titleColor: Color(0xFF60A5FA),
-            backgroundColor: Color(0xFFEFF6FF).withOpacity(0.5),
-            borderColor: Color(0xFFDBEAFE).withOpacity(0.5),
+            titleColor: darkOrange, // Cambiado a naranja oscuro
+            backgroundColor: Color(0xFFFFEDD5).withOpacity(0.5), // Fondo naranja claro
+            borderColor: Color(0xFFFDBA74).withOpacity(0.5), // Borde naranja medio
             controller1: teamBPlayer1Controller,
             controller2: teamBPlayer2Controller,
             isTeamB: true,
@@ -386,197 +549,15 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
     );
   }
 
-  Widget _buildBottomButton() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.9),
-        border: Border(top: BorderSide(color: Color(0xFFF1F5F9), width: 1)),
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: EdgeInsets.all(24),
-          child: ElevatedButton(
-            onPressed: () {},
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Color(0xFF2563EB),
-              foregroundColor: Colors.white,
-              padding: EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              elevation: 0,
-              shadowColor: Color(0xFF2563EB).withOpacity(0.2),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'START MATCH',
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
-                ),
-                SizedBox(width: 12),
-                Icon(Icons.play_arrow, size: 24),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ============ Widgets reutilizables ============
-
-class PlayerSeatWidget extends StatelessWidget {
-  final String playerId;
-  final String name;
-  final String team;
-  final Color teamColor;
-  final Color bgColor;
-  final Color iconColor;
-  final bool isSelected;
-  final bool isTop;
-
-  const PlayerSeatWidget({
-    Key? key,
-    required this.playerId,
-    required this.name,
-    required this.team,
-    required this.teamColor,
-    required this.bgColor,
-    required this.iconColor,
-    required this.isSelected,
-    this.isTop = false,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 128,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (isTop) ...[
-            Text(
-              team.toUpperCase(),
-              style: TextStyle(
-                fontSize: 9,
-                fontWeight: FontWeight.bold,
-                color: teamColor,
-                letterSpacing: -0.5,
-              ),
-            ),
-            SizedBox(height: 4),
-          ],
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: bgColor,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: isSelected ? Color(0xFFF97316) : iconColor,
-                    width: 2,
-                  ),
-                  boxShadow: isSelected
-                      ? [
-                          BoxShadow(
-                            color: Color(0xFFF97316).withOpacity(0.4),
-                            blurRadius: 20,
-                          ),
-                        ]
-                      : [],
-                ),
-                child: Icon(Icons.account_circle, size: 40, color: iconColor),
-              ),
-              Positioned(
-                top: -4,
-                right: -4,
-                child: AnimatedScale(
-                  scale: isSelected ? 1.0 : 0.5,
-                  duration: Duration(milliseconds: 300),
-                  child: AnimatedOpacity(
-                    opacity: isSelected ? 1.0 : 0.0,
-                    duration: Duration(milliseconds: 300),
-                    child: Container(
-                      width: 24,
-                      height: 24,
-                      decoration: BoxDecoration(
-                        color: Color(0xFFEAB308),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 4,
-                          ),
-                        ],
-                      ),
-                      child: Icon(Icons.star, size: 14, color: Colors.white),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 8),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                name,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                  color: isSelected ? Color(0xFFF97316) : Color(0xFF475569),
-                ),
-              ),
-              SizedBox(width: 4),
-              Icon(Icons.edit, size: 14, color: Color(0xFFCBD5E1)),
-            ],
-          ),
-          if (!isTop) ...[
-            SizedBox(height: 2),
-            Text(
-              team.toUpperCase(),
-              style: TextStyle(
-                fontSize: 9,
-                fontWeight: FontWeight.bold,
-                color: teamColor,
-                letterSpacing: -0.5,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class TeamInputCard extends StatelessWidget {
-  final String title;
-  final Color titleColor;
-  final Color backgroundColor;
-  final Color borderColor;
-  final TextEditingController controller1;
-  final TextEditingController controller2;
-  final bool isTeamB;
-
-  const TeamInputCard({
-    Key? key,
-    required this.title,
-    required this.titleColor,
-    required this.backgroundColor,
-    required this.borderColor,
-    required this.controller1,
-    required this.controller2,
-    this.isTeamB = false,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildTeamInputCard({
+    required String title,
+    required Color titleColor,
+    required Color backgroundColor,
+    required Color borderColor,
+    required TextEditingController controller1,
+    required TextEditingController controller2,
+    bool isTeamB = false,
+  }) {
     return Container(
       padding: EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -597,18 +578,26 @@ class TeamInputCard extends StatelessWidget {
             ),
           ),
           SizedBox(height: 8),
-          _buildTextField(controller1),
+          _buildTextField(controller1, isTeamB: isTeamB),
           SizedBox(height: 8),
-          _buildTextField(controller2),
+          _buildTextField(controller2, isTeamB: isTeamB),
         ],
       ),
     );
   }
 
-  Widget _buildTextField(TextEditingController controller) {
+  Widget _buildTextField(
+    TextEditingController controller, {
+    bool isTeamB = false,
+  }) {
     return TextField(
       controller: controller,
       style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+      onChanged: (value) {
+        // Esto ya no es necesario porque tenemos los listeners
+        // pero lo dejamos por si acaso
+        setState(() {});
+      },
       decoration: InputDecoration(
         filled: true,
         fillColor: isTeamB ? Colors.white.withOpacity(0.8) : Color(0xFFF8FAFC),
@@ -621,8 +610,46 @@ class TeamInputCard extends StatelessWidget {
       ),
     );
   }
+
+  Widget _buildBottomButton(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.9),
+        border: Border(top: BorderSide(color: Color(0xFFF1F5F9), width: 1)),
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: ElevatedButton(
+            onPressed: () => _startMatch(context),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primaryOrange, // Cambiado a naranja
+              foregroundColor: Colors.white,
+              padding: EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              elevation: 0,
+              shadowColor: primaryOrange.withOpacity(0.2),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'START MATCH',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+                ),
+                SizedBox(width: 12),
+                Icon(Icons.play_arrow, size: 24),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
-// ============ Enums y constantes ============
+// ============ Enums y Modelos ============
 
 enum PlayerPosition { top, bottom, left, right }
