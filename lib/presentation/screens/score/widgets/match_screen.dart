@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../models/team_data.dart';
-import 'points_modal.dart'; // Asegúrate de importar el modal
+import 'points_modal.dart';
+import 'penalty_modal_updated.dart';
 
 class MatchScreen extends StatefulWidget {
   final TeamData teamData;
@@ -14,8 +15,8 @@ class MatchScreen extends StatefulWidget {
 class _MatchScreenState extends State<MatchScreen> {
   int teamAScore = 0;
   int teamBScore = 0;
-  int teamAWins = 0; // ← NUEVO: Victorias del equipo A
-  int teamBWins = 0; // ← NUEVO: Victorias del equipo B
+  int teamAWins = 0;
+  int teamBWins = 0;
   int roundNumber = 0;
   int targetScore = 100;
   int currentTurnIndex = 0;
@@ -23,42 +24,60 @@ class _MatchScreenState extends State<MatchScreen> {
 
   String getCurrentTurnPlayer() {
     final players = [
-      widget.teamData.teamAPlayer1, // 0
-      widget.teamData.teamBPlayer1, // 1
-      widget.teamData.teamAPlayer2, // 2
-      widget.teamData.teamBPlayer2, // 3
+      widget.teamData.teamAPlayer1,
+      widget.teamData.teamBPlayer1,
+      widget.teamData.teamAPlayer2,
+      widget.teamData.teamBPlayer2,
     ];
 
-    // Encontrar el índice del jugador que sale (startingPlayerName)
     final startingPlayerIndex = players.indexOf(
       widget.teamData.startingPlayerName,
     );
 
-    // Si encontramos al startingPlayer en la lista
     if (startingPlayerIndex != -1) {
-      // Calcular el turno relativo al startingPlayer
       return players[(startingPlayerIndex + currentTurnIndex) % 4];
     }
 
-    // Fallback (no debería pasar si startingPlayerName es válido)
     return players[currentTurnIndex % 4];
   }
 
-  // ← NUEVO: Función para avanzar al siguiente turno
   void advanceTurn() {
     currentTurnIndex++;
   }
 
-  // ← NUEVO: Función para verificar si alguien ganó la partida
   void _checkForWinner() {
-    if (teamAScore >= targetScore) {
+    final teamATotal = _calculateTeamAScore();
+    final teamBTotal = _calculateTeamBScore();
+
+    if (teamATotal >= targetScore) {
       _showWinnerDialog(true);
-    } else if (teamBScore >= targetScore) {
+    } else if (teamBTotal >= targetScore) {
       _showWinnerDialog(false);
     }
   }
 
-  // ← NUEVO: Función para mostrar diálogo de ganador y reiniciar
+  int _calculateTeamAScore() {
+    int total = 0;
+    for (var round in roundHistory) {
+      if (round['deleted'] != true) {
+        final points = round['teamAScore'] as int;
+        total += points;
+      }
+    }
+    return total;
+  }
+
+  int _calculateTeamBScore() {
+    int total = 0;
+    for (var round in roundHistory) {
+      if (round['deleted'] != true) {
+        final points = round['teamBScore'] as int;
+        total += points;
+      }
+    }
+    return total;
+  }
+
   Future<void> _showWinnerDialog(bool isTeamA) async {
     await showDialog(
       context: context,
@@ -96,17 +115,14 @@ class _MatchScreenState extends State<MatchScreen> {
     );
   }
 
-  // ← NUEVO: Función para reiniciar la partida
   void _resetMatch() {
     setState(() {
-      // Sumar victoria al equipo ganador
       if (teamAScore >= targetScore) {
         teamAWins++;
       } else if (teamBScore >= targetScore) {
         teamBWins++;
       }
 
-      // Reiniciar todo para nueva partida
       teamAScore = 0;
       teamBScore = 0;
       roundNumber = 0;
@@ -115,7 +131,6 @@ class _MatchScreenState extends State<MatchScreen> {
     });
   }
 
-  // Función para mostrar el modal de puntos
   Future<void> _showPointsModal(bool isTeamA) async {
     final points = await showPointsModal(
       context,
@@ -144,8 +159,6 @@ class _MatchScreenState extends State<MatchScreen> {
         }
         roundNumber++;
         advanceTurn();
-
-        // ← NUEVO: Verificar si hay ganador después de sumar puntos
         _checkForWinner();
       });
     }
@@ -153,7 +166,6 @@ class _MatchScreenState extends State<MatchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Definir colores según el diseño
     const Color primaryColor = Color(0xFFf97316);
     const Color primaryDarkColor = Color(0xFFea580c);
     const Color primaryLightColor = Color(0xFFfff7ed);
@@ -170,7 +182,6 @@ class _MatchScreenState extends State<MatchScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Header
             Container(
               padding: const EdgeInsets.only(
                 left: 16,
@@ -245,7 +256,6 @@ class _MatchScreenState extends State<MatchScreen> {
               ),
             ),
 
-            // Starting Player Section
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
@@ -255,7 +265,6 @@ class _MatchScreenState extends State<MatchScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Lado izquierdo: SALIDA
                   Row(
                     children: [
                       Container(
@@ -297,7 +306,6 @@ class _MatchScreenState extends State<MatchScreen> {
                     ],
                   ),
 
-                  // Centro: TURN (con el nombre centrado entre SALIDA y ROUND)
                   Expanded(
                     child: Center(
                       child: Column(
@@ -324,7 +332,6 @@ class _MatchScreenState extends State<MatchScreen> {
                     ),
                   ),
 
-                  // Lado derecho: ROUND
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
@@ -351,7 +358,6 @@ class _MatchScreenState extends State<MatchScreen> {
               ),
             ),
 
-            // Scoreboard Section - MODIFICADO PARA INCLUIR WINS
             Container(
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -359,7 +365,6 @@ class _MatchScreenState extends State<MatchScreen> {
               ),
               child: Row(
                 children: [
-                  // Team A
                   Expanded(
                     child: Container(
                       padding: const EdgeInsets.all(12),
@@ -380,14 +385,13 @@ class _MatchScreenState extends State<MatchScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            teamAScore.toString(),
+                            _calculateTeamAScore().toString(),
                             style: const TextStyle(
                               fontSize: 32,
                               fontWeight: FontWeight.w900,
                               color: charcoalColor,
                             ),
                           ),
-                          // ← NUEVO: Wins del equipo A
                           const SizedBox(height: 4),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -407,7 +411,6 @@ class _MatchScreenState extends State<MatchScreen> {
                                   horizontal: 8,
                                   vertical: 2,
                                 ),
-
                                 child: Text(
                                   teamAWins.toString(),
                                   style: const TextStyle(
@@ -417,7 +420,6 @@ class _MatchScreenState extends State<MatchScreen> {
                                   ),
                                 ),
                               ),
-
                             ],
                           ),
                           const SizedBox(height: 8),
@@ -444,7 +446,6 @@ class _MatchScreenState extends State<MatchScreen> {
                     ),
                   ),
 
-                  // Team B
                   Expanded(
                     child: Container(
                       padding: const EdgeInsets.all(12),
@@ -462,14 +463,13 @@ class _MatchScreenState extends State<MatchScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            teamBScore.toString(),
+                            _calculateTeamBScore().toString(),
                             style: const TextStyle(
                               fontSize: 32,
                               fontWeight: FontWeight.w900,
                               color: charcoalColor,
                             ),
                           ),
-                          // ← NUEVO: Wins del equipo B
                           const SizedBox(height: 4),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -489,7 +489,6 @@ class _MatchScreenState extends State<MatchScreen> {
                                   horizontal: 8,
                                   vertical: 2,
                                 ),
-
                                 child: Text(
                                   teamBWins.toString(),
                                   style: const TextStyle(
@@ -528,7 +527,6 @@ class _MatchScreenState extends State<MatchScreen> {
               ),
             ),
 
-            // Round History Section
             Expanded(
               child: ListView.builder(
                 padding: const EdgeInsets.symmetric(
@@ -539,6 +537,9 @@ class _MatchScreenState extends State<MatchScreen> {
                 itemBuilder: (context, index) {
                   final round = roundHistory[index];
                   final isDeleted = round['deleted'] == true;
+                  final isPenalty = round['penalty'] == true;
+                  final teamAScoreValue = round['teamAScore'] as int;
+                  final teamBScoreValue = round['teamBScore'] as int;
 
                   return Container(
                     margin: const EdgeInsets.only(bottom: 4),
@@ -546,9 +547,15 @@ class _MatchScreenState extends State<MatchScreen> {
                     decoration: BoxDecoration(
                       color: isDeleted
                           ? slate100.withOpacity(0.4)
-                          : Colors.white,
+                          : (isPenalty ? Color(0xFFFFF5F5) : Colors.white),
                       borderRadius: BorderRadius.circular(8),
-                      border: isDeleted ? null : Border.all(color: slate100),
+                      border: isDeleted
+                          ? null
+                          : Border.all(
+                              color: isPenalty
+                                  ? Colors.red.withOpacity(0.2)
+                                  : slate100,
+                            ),
                       boxShadow: isDeleted
                           ? null
                           : [
@@ -561,19 +568,20 @@ class _MatchScreenState extends State<MatchScreen> {
                     ),
                     child: Row(
                       children: [
-                        // Team A Score
                         Expanded(
                           flex: 3,
                           child: Text(
-                            (round['teamAScore'] as int).toString(),
+                            teamAScoreValue.toString(),
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
                               color: isDeleted
                                   ? slate400
-                                  : ((round['teamAScore'] as int) > 0
-                                        ? charcoalColor
-                                        : slate300),
+                                  : (isPenalty && teamAScoreValue < 0
+                                        ? Colors.red
+                                        : (teamAScoreValue > 0
+                                              ? charcoalColor
+                                              : slate300)),
                               decoration: isDeleted
                                   ? TextDecoration.lineThrough
                                   : null,
@@ -581,7 +589,6 @@ class _MatchScreenState extends State<MatchScreen> {
                           ),
                         ),
 
-                        // Round Number - CENTRADO
                         Container(
                           width: 28,
                           height: 28,
@@ -589,7 +596,9 @@ class _MatchScreenState extends State<MatchScreen> {
                           decoration: BoxDecoration(
                             color: isDeleted
                                 ? slate200.withOpacity(0.5)
-                                : slate100,
+                                : (isPenalty
+                                      ? Colors.red.withOpacity(0.1)
+                                      : slate100),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Center(
@@ -602,26 +611,27 @@ class _MatchScreenState extends State<MatchScreen> {
                                 fontWeight: isDeleted
                                     ? FontWeight.bold
                                     : FontWeight.w900,
-                                color: slate400,
+                                color: isPenalty ? Colors.red : slate400,
                               ),
                             ),
                           ),
                         ),
 
-                        // Team B Score
                         Expanded(
                           flex: 3,
                           child: Text(
-                            (round['teamBScore'] as int).toString(),
+                            teamBScoreValue.toString(),
                             textAlign: TextAlign.right,
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
                               color: isDeleted
                                   ? slate400
-                                  : ((round['teamBScore'] as int) > 0
-                                        ? charcoalColor
-                                        : slate300),
+                                  : (isPenalty && teamBScoreValue < 0
+                                        ? Colors.red
+                                        : (teamBScoreValue > 0
+                                              ? charcoalColor
+                                              : slate300)),
                               decoration: isDeleted
                                   ? TextDecoration.lineThrough
                                   : null,
@@ -629,28 +639,36 @@ class _MatchScreenState extends State<MatchScreen> {
                           ),
                         ),
 
-                        // Delete Button
                         const SizedBox(width: 8),
                         InkWell(
                           onTap: () {
                             setState(() {
                               if (isDeleted) {
-                                // Si ya está eliminado, restaurar
                                 roundHistory[index]['deleted'] = false;
                                 roundNumber++;
                                 advanceTurn();
-                                teamAScore += round['teamAScore'] as int;
-                                teamBScore += round['teamBScore'] as int;
 
-                                // Verificar si hay ganador después de restaurar
+                                if (isPenalty) {
+                                  teamAScore += teamAScoreValue;
+                                  teamBScore += teamBScoreValue;
+                                } else {
+                                  teamAScore -= teamAScoreValue;
+                                  teamBScore -= teamBScoreValue;
+                                }
+
                                 _checkForWinner();
                               } else {
-                                // Marcar como eliminado
                                 roundHistory[index]['deleted'] = true;
                                 roundHistory[index]['round'] = 0;
                                 roundNumber = roundNumber - 1;
-                                teamAScore -= round['teamAScore'] as int;
-                                teamBScore -= round['teamBScore'] as int;
+
+                                if (isPenalty) {
+                                  teamAScore += teamAScoreValue;
+                                  teamBScore += teamBScoreValue;
+                                } else {
+                                  teamAScore -= teamAScoreValue;
+                                  teamBScore -= teamBScoreValue;
+                                }
                               }
                             });
                           },
@@ -680,7 +698,6 @@ class _MatchScreenState extends State<MatchScreen> {
         ),
       ),
 
-      // Bottom Bar
       bottomSheet: Container(
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.95),
@@ -692,7 +709,6 @@ class _MatchScreenState extends State<MatchScreen> {
           children: [
             Row(
               children: [
-                // Equal Button
                 Expanded(
                   child: TextButton(
                     onPressed: () {
@@ -744,11 +760,44 @@ class _MatchScreenState extends State<MatchScreen> {
 
                 const SizedBox(width: 8),
 
-                // Goat Button
                 Expanded(
                   child: TextButton(
-                    onPressed: () {
-                      // Lógica para Cabra
+                    onPressed: () async {
+                      final result = await showPenaltyModal(
+                        context,
+                        teamAName:
+                            '${widget.teamData.teamAPlayer1} & ${widget.teamData.teamAPlayer2}',
+                        teamBName:
+                            '${widget.teamData.teamBPlayer1} & ${widget.teamData.teamBPlayer2}',
+                        teamAScore: _calculateTeamAScore(),
+                        teamBScore: _calculateTeamBScore(),
+                        accentColor: primaryColor,
+                      );
+
+                      if (result != null) {
+                        setState(() {
+                          final penalty = result['penalty'] as int;
+                          final team = result['team'] as String;
+
+                          final String penaltyPlayer = team == 'A'
+                              ? '${widget.teamData.teamAPlayer1} & ${widget.teamData.teamAPlayer2}'
+                              : '${widget.teamData.teamBPlayer1} & ${widget.teamData.teamBPlayer2}';
+
+                          roundHistory.insert(0, {
+                            'teamAScore': team == 'A' ? -penalty : 0,
+                            'teamBScore': team == 'B' ? -penalty : 0,
+                            'round': roundNumber + 1,
+                            'penalty': true,
+                            'deleted': false,
+                            'penaltyPlayer': penaltyPlayer,
+                            'penaltyTeam': team,
+                          });
+
+                          roundNumber++;
+                          advanceTurn();
+                          _checkForWinner();
+                        });
+                      }
                     },
                     style: TextButton.styleFrom(
                       backgroundColor: primaryLightColor,

@@ -16,10 +16,6 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
   static const Color lightOrange = Color(0xFFFED7AA); // Naranja claro
   static const Color darkOrange = Color(0xFFEA580C); // Naranja oscuro
 
-  // Definir colores azules que serán reemplazados
-  static const Color oldBlue = Color(0xFF2563EB);
-  static const Color oldLightBlue = Color(0xFF60A5FA);
-
   final TextEditingController teamAPlayer1Controller = TextEditingController(
     text: 'Alex',
   );
@@ -119,25 +115,26 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
                 padding: EdgeInsets.all(16),
                 child: Column(
                   children: [
-                    // Mode selector
+                    // Selector de modo
                     _buildModeSelector(),
 
-                    SizedBox(height: 40),
-
-                    // Title section
+                    SizedBox(height: 10),
+                    // Sección de título
                     _buildTitleSection(),
+                      SizedBox(height: 10),
+
+                      // Entradas de equipos
+                    _buildTeamInputs(),
+
 
                     SizedBox(height: 24),
 
-                    // Table with players - AHORA USA LOS NOMBRES ACTUALIZADOS
+                    // Mesa con jugadores
                     _buildTable(),
 
                     SizedBox(height: 32),
 
-                    // Team inputs
-                    _buildTeamInputs(),
 
-                    SizedBox(height: 120),
                   ],
                 ),
               ),
@@ -146,7 +143,7 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
         ],
       ),
 
-      // Bottom button
+      // Botón inferior
       bottomNavigationBar: _buildBottomButton(context),
     );
   }
@@ -160,14 +157,14 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
       child: SafeArea(
         bottom: false,
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 5),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(
                 icon: Icon(
                   Icons.arrow_back_ios,
-                  color: primaryOrange, // Cambiado a naranja
+                  color: primaryOrange,
                   size: 24,
                 ),
                 onPressed: () {
@@ -175,7 +172,7 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
                 },
               ),
               Text(
-                'Team Setup',
+                'Configuración de Equipos',
                 style: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.bold,
@@ -183,7 +180,7 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
                 ),
               ),
               IconButton(
-                icon: Icon(Icons.settings, color: primaryOrange, size: 24), // Cambiado a naranja
+                icon: Icon(Icons.settings, color: primaryOrange, size: 24),
                 onPressed: () {},
               ),
             ],
@@ -203,7 +200,7 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
       child: Row(
         children: [
           _buildModeButton('Individual', 'individual'),
-          _buildModeButton('Teams', 'teams'),
+          _buildModeButton('Equipos', 'teams'),
         ],
       ),
     );
@@ -233,9 +230,7 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: selectedMode == mode
-                  ? primaryOrange // Cambiado a naranja cuando está seleccionado
-                  : Color(0xFF64748B),
+              color: selectedMode == mode ? primaryOrange : Color(0xFF64748B),
             ),
           ),
         ),
@@ -246,17 +241,10 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
   Widget _buildTitleSection() {
     return Column(
       children: [
-        Text(
-          'Select Starting Player',
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF0F172A),
-          ),
-        ),
+
         SizedBox(height: 4),
         Text(
-          'Tap a player at the table to set who starts',
+          'Toca un jugador en la mesa para establecer quién empieza',
           style: TextStyle(fontSize: 12, color: Color(0xFFCBD5E1)),
         ),
       ],
@@ -269,7 +257,7 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
       height: 380,
       child: Stack(
         children: [
-          // Center table
+          // Mesa central
           Center(
             child: Container(
               width: 176,
@@ -299,45 +287,45 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
             ),
           ),
 
-          // Players - AHORA USA LOS NOMBRES DE LOS CONTROLLERS
+          // Jugadores
           _buildPlayerSeatPositioned(
             playerId: 'p1',
-            name: _getNameForPlayerId('p1'), // Nombre dinámico
-            team: 'Team A',
+            name: _getNameForPlayerId('p1'),
+            team: 'Equipo A',
             position: PlayerPosition.bottom,
-            teamColor: primaryOrange, // Cambiado a naranja
+            teamColor: primaryOrange,
             bgColor: Color(0xFFF8FAFC),
-            iconColor: lightOrange, // Cambiado a naranja claro
+            iconColor: lightOrange,
           ),
 
           _buildPlayerSeatPositioned(
             playerId: 'p2',
-            name: _getNameForPlayerId('p2'), // Nombre dinámico
-            team: 'Team A',
+            name: _getNameForPlayerId('p2'),
+            team: 'Equipo A',
             position: PlayerPosition.top,
-            teamColor: primaryOrange, // Cambiado a naranja
+            teamColor: primaryOrange,
             bgColor: Color(0xFFF8FAFC),
-            iconColor: lightOrange, // Cambiado a naranja claro
+            iconColor: lightOrange,
           ),
 
           _buildPlayerSeatPositioned(
             playerId: 'p3',
-            name: _getNameForPlayerId('p3'), // Nombre dinámico
-            team: 'Team B',
+            name: _getNameForPlayerId('p3'),
+            team: 'Equipo B',
             position: PlayerPosition.right,
-            teamColor: darkOrange, // Cambiado a naranja oscuro
-            bgColor: Color(0xFFFFEDD5), // Fondo naranja muy claro
-            iconColor: Color(0xFFFDBA74), // Naranja medio
+            teamColor: darkOrange,
+            bgColor: Color(0xFFFFEDD5),
+            iconColor: Color(0xFFFDBA74),
           ),
 
           _buildPlayerSeatPositioned(
             playerId: 'p4',
-            name: _getNameForPlayerId('p4'), // Nombre dinámico
-            team: 'Team B',
+            name: _getNameForPlayerId('p4'),
+            team: 'Equipo B',
             position: PlayerPosition.left,
-            teamColor: darkOrange, // Cambiado a naranja oscuro
-            bgColor: Color(0xFFFFEDD5), // Fondo naranja muy claro
-            iconColor: Color(0xFFFDBA74), // Naranja medio
+            teamColor: darkOrange,
+            bgColor: Color(0xFFFFEDD5),
+            iconColor: Color(0xFFFDBA74),
           ),
         ],
       ),
@@ -470,7 +458,7 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
                         width: 24,
                         height: 24,
                         decoration: BoxDecoration(
-                          color: primaryOrange, // Cambiado a naranja
+                          color: primaryOrange,
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
@@ -525,10 +513,10 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
       children: [
         Expanded(
           child: _buildTeamInputCard(
-            title: 'TEAM A PLAYERS',
-            titleColor: primaryOrange, // Cambiado a naranja
+            title: 'JUGADORES EQUIPO A',
+            titleColor: primaryOrange,
             backgroundColor: Colors.white,
-            borderColor: lightOrange.withOpacity(0.5), // Borde naranja claro
+            borderColor: lightOrange.withOpacity(0.5),
             controller1: teamAPlayer1Controller,
             controller2: teamAPlayer2Controller,
           ),
@@ -536,10 +524,10 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
         SizedBox(width: 12),
         Expanded(
           child: _buildTeamInputCard(
-            title: 'TEAM B PLAYERS',
-            titleColor: darkOrange, // Cambiado a naranja oscuro
-            backgroundColor: Color(0xFFFFEDD5).withOpacity(0.5), // Fondo naranja claro
-            borderColor: Color(0xFFFDBA74).withOpacity(0.5), // Borde naranja medio
+            title: 'JUGADORES EQUIPO B',
+            titleColor: darkOrange,
+            backgroundColor: Color(0xFFFFEDD5).withOpacity(0.5),
+            borderColor: Color(0xFFFDBA74).withOpacity(0.5),
             controller1: teamBPlayer1Controller,
             controller2: teamBPlayer2Controller,
             isTeamB: true,
@@ -594,8 +582,6 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
       controller: controller,
       style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
       onChanged: (value) {
-        // Esto ya no es necesario porque tenemos los listeners
-        // pero lo dejamos por si acaso
         setState(() {});
       },
       decoration: InputDecoration(
@@ -623,7 +609,7 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
           child: ElevatedButton(
             onPressed: () => _startMatch(context),
             style: ElevatedButton.styleFrom(
-              backgroundColor: primaryOrange, // Cambiado a naranja
+              backgroundColor: primaryOrange,
               foregroundColor: Colors.white,
               padding: EdgeInsets.symmetric(vertical: 16),
               shape: RoundedRectangleBorder(
@@ -636,7 +622,7 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  'START MATCH',
+                  'COMENZAR PARTIDA',
                   style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
                 ),
                 SizedBox(width: 12),
