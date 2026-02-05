@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../../../models/team_data.dart';
 import 'points_modal.dart';
 import 'penalty_modal_updated.dart';
+import 'edit_target_points_modal.dart';
+
 
 class MatchScreen extends StatefulWidget {
   final TeamData teamData;
@@ -228,20 +230,43 @@ class _MatchScreenState extends State<MatchScreen> {
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(color: primaryColor.withOpacity(0.1)),
                     ),
-                    child: Row(
-                      children: [
-                        Text(
-                          'Target: $targetScore',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: primaryColor,
-                            letterSpacing: 0.5,
+                   child: GestureDetector(
+                      onTap: () {
+                        // Mostrar el modal
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (context) => EditTargetPointsModal(
+                            currentScore: targetScore,
+                            onSave: (newScore) {
+                              // Actualizar el estado con el nuevo score
+                              setState(() {
+                                targetScore = newScore;
+                              });
+                              Navigator.pop(context);
+                            },
+                            onCancel: () {
+                              Navigator.pop(context);
+                            },
                           ),
-                        ),
-                        const SizedBox(width: 4),
-                        const Icon(Icons.edit, size: 14, color: primaryColor),
-                      ],
+                        );
+                      },
+                      child: Row(
+                        children: [
+                          Text(
+                            'Puntos: $targetScore',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: primaryColor,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          const Icon(Icons.edit, size: 14, color: primaryColor),
+                        ],
+                      ),
                     ),
                   ),
                   IconButton(
