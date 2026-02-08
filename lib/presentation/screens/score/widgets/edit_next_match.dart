@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import '../../../../models/team_data.dart';
+import 'match_screen.dart'; // Añade esta importación
 
 class EditMatchSettingsScreen extends StatefulWidget {
   final Map<String, dynamic> matchData;
-  final VoidCallback onSave;
+  final Function(Map<String, dynamic>) onSave;
 
   const EditMatchSettingsScreen({
     Key? key,
@@ -17,43 +19,91 @@ class EditMatchSettingsScreen extends StatefulWidget {
 
 class _EditMatchSettingsScreenState extends State<EditMatchSettingsScreen> {
   late Map<String, TextEditingController> _playerControllers;
-  String _selectedCaptain = 'Juan'; // Jugador con check (igual que salida)
+  String _selectedCaptain = 'Juan';
 
-  // Colores idénticos a TeamSetupScreen
-  static const Color primaryOrange = Color(0xFFF97316); // Naranja principal
-  static const Color lightOrange = Color(0xFFFED7AA); // Naranja claro
-  static const Color darkOrange = Color(0xFFEA580C); // Naranja oscuro
+  late TeamData _originalTeamData;
+  late int _teamAWins;
+  late int _teamBWins;
+  late String _winningTeam;
+
+  static const Color primaryOrange = Color(0xFFF97316);
+  static const Color lightOrange = Color(0xFFFED7AA);
+  static const Color darkOrange = Color(0xFFEA580C);
 
   @override
   void initState() {
     super.initState();
-    // Inicializar controladores para los jugadores
+
+    _originalTeamData = widget.matchData['teamData'] as TeamData;
+    _teamAWins = widget.matchData['teamAWins'] as int;
+    _teamBWins = widget.matchData['teamBWins'] as int;
+    _winningTeam = widget.matchData['winningTeam'] as String;
+
     _playerControllers = {
-      'teamA1': TextEditingController(text: 'Juan'),
-      'teamA2': TextEditingController(text: 'Pedro'),
-      'teamB1': TextEditingController(text: 'Alex'),
-      'teamB2': TextEditingController(text: 'Taylor'),
+      'teamA1': TextEditingController(text: _originalTeamData.teamAPlayer1),
+      'teamA2': TextEditingController(text: _originalTeamData.teamAPlayer2),
+      'teamB1': TextEditingController(text: _originalTeamData.teamBPlayer1),
+      'teamB2': TextEditingController(text: _originalTeamData.teamBPlayer2),
     };
-    // Inicializar con el primer jugador como capitán
-    _selectedCaptain = _playerControllers['teamA1']!.text;
+
+    _selectedCaptain = _originalTeamData.startingPlayerName;
   }
 
   @override
   void dispose() {
-    // Limpiar controladores
     _playerControllers.forEach((key, controller) => controller.dispose());
     super.dispose();
   }
 
   void _toggleCaptain(String playerKey) {
     setState(() {
-      // Actualizamos el capitán (que también es la salida)
       _selectedCaptain = _playerControllers[playerKey]!.text;
     });
   }
 
   bool _isCaptain(String playerName) {
     return _selectedCaptain == playerName;
+  }
+
+  void _saveAndNavigate(BuildContext context) {
+    final updatedTeamData = TeamData(
+      teamAPlayer1: _playerControllers['teamA1']!.text,
+      teamAPlayer2: _playerControllers['teamA2']!.text,
+      teamBPlayer1: _playerControllers['teamB1']!.text,
+      teamBPlayer2: _playerControllers['teamB2']!.text,
+      startingPlayerId: _getPlayerId(_selectedCaptain),
+      startingPlayerName: _selectedCaptain,
+    );
+
+    final updatedMatchSummary = {
+      'teamData': updatedTeamData,
+      'teamAWins': _teamAWins,
+      'teamBWins': _teamBWins,
+      'winningTeam': _winningTeam,
+      'finalTeamAScore': widget.matchData['finalTeamAScore'] ?? 0,
+      'finalTeamBScore': widget.matchData['finalTeamBScore'] ?? 0,
+      'roundsPlayed': widget.matchData['roundsPlayed'] ?? 0,
+    };
+
+    // Ejecuta el callback onSave primero
+    widget.onSave(updatedMatchSummary);
+
+    // Luego navega a MatchScreen con los datos actualizados
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MatchScreen(teamData: updatedTeamData),
+      ),
+      (route) => false, // Esto elimina todas las rutas anteriores
+    );
+  }
+
+  String _getPlayerId(String playerName) {
+    if (playerName == _playerControllers['teamA1']!.text) return 'teamA1';
+    if (playerName == _playerControllers['teamA2']!.text) return 'teamA2';
+    if (playerName == _playerControllers['teamB1']!.text) return 'teamB1';
+    if (playerName == _playerControllers['teamB2']!.text) return 'teamB2';
+    return 'teamA1';
   }
 
   @override
@@ -63,7 +113,6 @@ class _EditMatchSettingsScreenState extends State<EditMatchSettingsScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Header
             Container(
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.8),
@@ -111,27 +160,22 @@ class _EditMatchSettingsScreenState extends State<EditMatchSettingsScreen> {
                       color: Color(0xFF0F172A),
                     ),
                   ),
-                  const SizedBox(width: 48), // Espacio para centrar
+                  const SizedBox(width: 48),
                 ],
               ),
             ),
 
-            // Contenido principal
             Expanded(
               child: SingleChildScrollView(
                 child: Column(
                   children: [
-                    // Sección de editar jugadores
                     _buildEditPlayersSection(),
-
-                    // Sección de mesa de juego
                     _buildGameTableSection(),
                   ],
                 ),
               ),
             ),
 
-            // Footer con botón guardar
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
@@ -147,9 +191,7 @@ class _EditMatchSettingsScreenState extends State<EditMatchSettingsScreen> {
                     height: 56,
                     child: ElevatedButton(
                       onPressed: () {
-                        // Guardar cambios y regresar
-                        widget.onSave();
-                        Navigator.pop(context);
+                        _saveAndNavigate(context);
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: primaryOrange,
@@ -192,7 +234,6 @@ class _EditMatchSettingsScreenState extends State<EditMatchSettingsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Título de sección
           Row(
             children: [
               const Icon(Icons.group, color: Color(0xFFF97316), size: 20),
@@ -210,7 +251,6 @@ class _EditMatchSettingsScreenState extends State<EditMatchSettingsScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Equipo A
           Container(
             decoration: BoxDecoration(
               color: Colors.white,
@@ -248,7 +288,6 @@ class _EditMatchSettingsScreenState extends State<EditMatchSettingsScreen> {
 
           const SizedBox(height: 16),
 
-          // Equipo B
           Container(
             decoration: BoxDecoration(
               color: const Color(0xFFFFEDD5).withOpacity(0.5),
@@ -300,7 +339,6 @@ class _EditMatchSettingsScreenState extends State<EditMatchSettingsScreen> {
 
     return Row(
       children: [
-        // Botón de capitán (Check) - igual que TeamSetupScreen
         GestureDetector(
           onTap: () => _toggleCaptain(playerKey),
           child: Container(
@@ -321,7 +359,6 @@ class _EditMatchSettingsScreenState extends State<EditMatchSettingsScreen> {
         ),
         const SizedBox(width: 12),
 
-        // Campo de texto - Estilo igual a TeamSetupScreen
         Expanded(
           child: TextField(
             controller: controller,
@@ -347,8 +384,6 @@ class _EditMatchSettingsScreenState extends State<EditMatchSettingsScreen> {
               ),
             ),
             onChanged: (value) {
-              // Si este jugador era el capitán y cambia su nombre,
-              // actualizamos el nombre del capitán
               if (isCaptain) {
                 setState(() {
                   _selectedCaptain = value;
@@ -367,7 +402,6 @@ class _EditMatchSettingsScreenState extends State<EditMatchSettingsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Título de sección
           Row(
             children: [
               const Icon(Icons.table_chart, color: Color(0xFFF97316), size: 20),
@@ -385,7 +419,6 @@ class _EditMatchSettingsScreenState extends State<EditMatchSettingsScreen> {
           ),
           const SizedBox(height: 24),
 
-          // Texto informativo
           const Center(
             child: Text(
               'Toca un jugador en la mesa para establecer quién empieza',
@@ -394,13 +427,11 @@ class _EditMatchSettingsScreenState extends State<EditMatchSettingsScreen> {
           ),
           const SizedBox(height: 24),
 
-          // Mesa de juego - Estilo idéntico a TeamSetupScreen
           SizedBox(
             width: double.infinity,
             height: 380,
             child: Stack(
               children: [
-                // Mesa central - Estilo igual
                 Center(
                   child: Container(
                     width: 176,
@@ -434,7 +465,6 @@ class _EditMatchSettingsScreenState extends State<EditMatchSettingsScreen> {
                   ),
                 ),
 
-                // Jugador inferior (teamA1)
                 Positioned(
                   bottom: 0,
                   left: 0,
@@ -456,7 +486,6 @@ class _EditMatchSettingsScreenState extends State<EditMatchSettingsScreen> {
                   ),
                 ),
 
-                // Jugador superior (teamA2)
                 Positioned(
                   top: 0,
                   left: 0,
@@ -478,7 +507,6 @@ class _EditMatchSettingsScreenState extends State<EditMatchSettingsScreen> {
                   ),
                 ),
 
-                // Jugador derecha (teamB2)
                 Positioned(
                   right: 0,
                   top: 0,
@@ -500,7 +528,6 @@ class _EditMatchSettingsScreenState extends State<EditMatchSettingsScreen> {
                   ),
                 ),
 
-                // Jugador izquierda (teamB1)
                 Positioned(
                   left: 0,
                   top: 0,

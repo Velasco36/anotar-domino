@@ -136,11 +136,12 @@ class _MatchScreenState extends State<MatchScreen>
    // Navegar a la página edit_next_match
   Navigator.push(
       context,
-      MaterialPageRoute(
+       MaterialPageRoute(
         builder: (context) => EditMatchSettingsScreen(
-          matchData: matchSummary, // Cambiado de matchSummary a matchData
-          onSave: () {
-            _resetMatchData();
+          matchData: matchSummary,
+          onSave: (updatedData) {
+            // IMPORTANTE: Pasar los datos de vuelta
+            Navigator.of(context).pop(updatedData);
           },
         ),
       ),
