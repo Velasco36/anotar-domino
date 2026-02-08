@@ -3,6 +3,7 @@ import '../../../../models/team_data.dart';
 import 'points_modal.dart';
 import 'penalty_modal_updated.dart';
 import 'edit_target_points_modal.dart';
+import 'edit_next_match.dart'; // Importa la nueva página
 
 class MatchScreen extends StatefulWidget {
   final TeamData teamData;
@@ -111,15 +112,44 @@ class _MatchScreenState extends State<MatchScreen>
     });
   }
 
-  // Función para resetear el match (llamada desde el botón Continuar)
+  // Función para continuar a la siguiente partida y redirigir
   void _continueToNextMatch() {
-    setState(() {
-      if (_calculateTeamAScore() >= targetScore) {
-        teamAWins++;
-      } else if (_calculateTeamBScore() >= targetScore) {
-        teamBWins++;
-      }
+    // Guardar las victorias antes de redirigir
+    if (_calculateTeamAScore() >= targetScore) {
+      teamAWins++;
+    } else if (_calculateTeamBScore() >= targetScore) {
+      teamBWins++;
+    }
 
+    // Crear un objeto con todos los datos para pasar a la siguiente pantalla
+    final matchSummary = {
+      'teamData': widget.teamData,
+      'teamAWins': teamAWins,
+      'teamBWins': teamBWins,
+      'finalTeamAScore': _calculateTeamAScore(),
+      'finalTeamBScore': _calculateTeamBScore(),
+      'winningTeam': _winningTeamName,
+      'roundsPlayed': roundHistory.length,
+    };
+
+    // Navegar a la página edit_next_match
+   // Navegar a la página edit_next_match
+  Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditMatchSettingsScreen(
+          matchData: matchSummary, // Cambiado de matchSummary a matchData
+          onSave: () {
+            _resetMatchData();
+          },
+        ),
+      ),
+    );
+  }
+
+  // Función para resetear los datos del match
+  void _resetMatchData() {
+    setState(() {
       teamAScore = 0;
       teamBScore = 0;
       roundNumber = 0;
