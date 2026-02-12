@@ -3,10 +3,11 @@ import '../../../../models/team_data.dart';
 import 'points_modal.dart';
 import 'penalty_modal_updated.dart';
 import 'edit_target_points_modal.dart';
-import 'edit_next_match.dart'; // Importa la nueva página
+import 'edit_next_match.dart';
+import 'history_match.dart' as history;
 
 class MatchScreen extends StatefulWidget {
-  final TeamData teamData;
+  final TeamData teamData; // Especifica el tipo TeamData
 
   const MatchScreen({Key? key, required this.teamData}) : super(key: key);
 
@@ -40,10 +41,7 @@ class _MatchScreenState extends State<MatchScreen>
       duration: const Duration(milliseconds: 800),
     );
     _scaleAnimation = Tween<double>(begin: 0.5, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.elasticOut,
-      ),
+      CurvedAnimation(parent: _animationController, curve: Curves.elasticOut),
     );
   }
 
@@ -133,10 +131,9 @@ class _MatchScreenState extends State<MatchScreen>
     };
 
     // Navegar a la página edit_next_match
-   // Navegar a la página edit_next_match
-  Navigator.push(
+    Navigator.push(
       context,
-       MaterialPageRoute(
+      MaterialPageRoute(
         builder: (context) => EditMatchSettingsScreen(
           matchData: matchSummary,
           onSave: (updatedData) {
@@ -246,8 +243,9 @@ class _MatchScreenState extends State<MatchScreen>
                   ),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.8),
-                    border:
-                        Border(bottom: BorderSide(color: slate100, width: 1)),
+                    border: Border(
+                      bottom: BorderSide(color: slate100, width: 1),
+                    ),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -283,7 +281,8 @@ class _MatchScreenState extends State<MatchScreen>
                           color: primaryLightColor,
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                              color: primaryColor.withOpacity(0.1)),
+                            color: primaryColor.withOpacity(0.1),
+                          ),
                         ),
                         child: GestureDetector(
                           onTap: () {
@@ -317,8 +316,11 @@ class _MatchScreenState extends State<MatchScreen>
                                 ),
                               ),
                               const SizedBox(width: 4),
-                              const Icon(Icons.edit,
-                                  size: 14, color: primaryColor),
+                              const Icon(
+                                Icons.edit,
+                                size: 14,
+                                color: primaryColor,
+                              ),
                             ],
                           ),
                         ),
@@ -336,12 +338,15 @@ class _MatchScreenState extends State<MatchScreen>
                 ),
 
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    border:
-                        Border(bottom: BorderSide(color: slate100, width: 1)),
+                    border: Border(
+                      bottom: BorderSide(color: slate100, width: 1),
+                    ),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -442,8 +447,9 @@ class _MatchScreenState extends State<MatchScreen>
                 Container(
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    border:
-                        Border(bottom: BorderSide(color: slate100, width: 1)),
+                    border: Border(
+                      bottom: BorderSide(color: slate100, width: 1),
+                    ),
                   ),
                   child: Row(
                     children: [
@@ -518,8 +524,7 @@ class _MatchScreenState extends State<MatchScreen>
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     elevation: 2,
-                                    shadowColor:
-                                        primaryColor.withOpacity(0.15),
+                                    shadowColor: primaryColor.withOpacity(0.15),
                                   ),
                                   child: const Icon(Icons.add, size: 24),
                                 ),
@@ -597,8 +602,7 @@ class _MatchScreenState extends State<MatchScreen>
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     elevation: 2,
-                                    shadowColor:
-                                        primaryColor.withOpacity(0.15),
+                                    shadowColor: primaryColor.withOpacity(0.15),
                                   ),
                                   child: const Icon(Icons.add, size: 24),
                                 ),
@@ -662,10 +666,10 @@ class _MatchScreenState extends State<MatchScreen>
                                   color: isDeleted
                                       ? slate400
                                       : (isPenalty && teamAScoreValue < 0
-                                          ? Colors.red
-                                          : (teamAScoreValue > 0
-                                              ? charcoalColor
-                                              : slate300)),
+                                            ? Colors.red
+                                            : (teamAScoreValue > 0
+                                                  ? charcoalColor
+                                                  : slate300)),
                                   decoration: isDeleted
                                       ? TextDecoration.lineThrough
                                       : null,
@@ -681,8 +685,8 @@ class _MatchScreenState extends State<MatchScreen>
                                 color: isDeleted
                                     ? slate200.withOpacity(0.5)
                                     : (isPenalty
-                                        ? Colors.red.withOpacity(0.1)
-                                        : slate100),
+                                          ? Colors.red.withOpacity(0.1)
+                                          : slate100),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Center(
@@ -712,10 +716,10 @@ class _MatchScreenState extends State<MatchScreen>
                                   color: isDeleted
                                       ? slate400
                                       : (isPenalty && teamBScoreValue < 0
-                                          ? Colors.red
-                                          : (teamBScoreValue > 0
-                                              ? charcoalColor
-                                              : slate300)),
+                                            ? Colors.red
+                                            : (teamBScoreValue > 0
+                                                  ? charcoalColor
+                                                  : slate300)),
                                   decoration: isDeleted
                                       ? TextDecoration.lineThrough
                                       : null,
@@ -834,18 +838,16 @@ class _MatchScreenState extends State<MatchScreen>
                           const SizedBox(height: 5),
                           Text(
                             'Ha ganado la partida',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: slate500,
-                            ),
+                            style: TextStyle(fontSize: 14, color: slate500),
                           ),
                           const SizedBox(height: 20),
                           SizedBox(
                             width: 200,
                             child: LinearProgressIndicator(
                               backgroundColor: slate200,
-                              valueColor:
-                                  AlwaysStoppedAnimation<Color>(primaryColor),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                primaryColor,
+                              ),
                               minHeight: 4,
                             ),
                           ),
@@ -958,6 +960,48 @@ class _MatchScreenState extends State<MatchScreen>
 
                       Expanded(
                         child: TextButton(
+                          onPressed: () {
+                            // Navegar a la vista de historial usando el alias
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => history.HistoryScreen(
+                                  roundHistory: roundHistory,
+                                  teamData: widget.teamData,
+                                ),
+                              ),
+                            );
+                          },
+                          style: TextButton.styleFrom(
+                            backgroundColor: Colors.grey[100],
+                            foregroundColor: Colors.grey[800],
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.history, size: 18),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Historial',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: -0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(width: 8),
+
+                      Expanded(
+                        child: TextButton(
                           onPressed: () async {
                             final result = await showPenaltyModal(
                               context,
@@ -1002,7 +1046,8 @@ class _MatchScreenState extends State<MatchScreen>
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                               side: BorderSide(
-                                  color: primaryColor.withOpacity(0.1)),
+                                color: primaryColor.withOpacity(0.1),
+                              ),
                             ),
                           ),
                           child: Row(
