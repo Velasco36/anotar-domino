@@ -1,7 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../models/match_model.dart';
-import '../models/team_data.dart';
 
 class PartidaService {
   final _db = FirebaseFirestore.instance;
@@ -9,54 +7,54 @@ class PartidaService {
 
   String get _uid => _auth.currentUser!.uid;
 
-  // ─── Guardar jugadores nuevos (acumula sin repetir) ───
   Future<void> guardarJugadores(List<String> nombres) async {
     final ref = _db.collection('jugadores').doc(_uid);
     final doc = await ref.get();
-
     List<String> existentes = [];
     if (doc.exists) {
       existentes = List<String>.from(doc.data()?['nombres'] ?? []);
     }
-
-    // Agrega solo los que no existen
-    final nuevos = nombres.where((n) => !existentes.contains(n)).toList();
+    final nuevos = nombres
+        .map((n) => n.trim())
+        .where((n) => n.isNotEmpty && !existentes.contains(n))
+        .toList();
     if (nuevos.isEmpty) return;
-
     await ref.set({
       'nombres': [...existentes, ...nuevos],
     });
   }
 
-  // ─── Obtener jugadores guardados (para autocompletar) ───
   Future<List<String>> getJugadores() async {
-    final doc = await _db.collection('jugadores').doc(_uid).get();
-    if (!doc.exists) return [];
-    return List<String>.from(doc.data()?['nombres'] ?? []);
+    try {
+      final doc = await _db.collection('jugadores').doc(_uid).get();
+      if (!doc.exists) return [];
+      return List<String>.from(doc.data()?['nombres'] ?? []);
+    } catch (e) {
+      return [];
+    }
   }
 
-  // ─── Guardar partida al finalizar ───
   Future<void> guardarPartida({
     required List<String> equipoA,
     required List<String> equipoB,
     required int puntajeA,
     required int puntajeB,
-    required String ganador, // "equipoA" o "equipoB"
+    required String ganador,
+    int targetScore = 100,
+    int rounds = 0,
   }) async {
-    // Guarda la partida
     await _db.collection('users').doc(_uid).collection('partidas').add({
       'equipoA': equipoA,
       'equipoB': equipoB,
       'puntajes': {'equipoA': puntajeA, 'equipoB': puntajeB},
       'ganador': ganador,
+      'targetScore': targetScore,
+      'rounds': rounds,
       'fecha': FieldValue.serverTimestamp(),
     });
-
-    // Guarda los jugadores para futuras partidas
     await guardarJugadores([...equipoA, ...equipoB]);
   }
 
-  // ─── Obtener historial de partidas ───
   Stream<QuerySnapshot> getHistorial() {
     return _db
         .collection('users')
@@ -64,5 +62,52 @@ class PartidaService {
         .collection('partidas')
         .orderBy('fecha', descending: true)
         .snapshots();
+  }
+
+  Future<Map<String, int>> getRanking() async {
+    try {
+      final snapshot = await _db
+          .collection('users')
+          .doc(_uid)
+          .collection('partidas')
+          .get();
+      final Map<String, int> victorias = {};
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        final ganador = data['ganador'] as String;
+        final List<String> ganadores = ganador == 'equipoA'
+            ? List<String>.from(data['equipoA'] ?? [])
+            : List<String>.from(data['equipoB'] ?? []);
+        for (final jugador in ganadores) {
+          victorias[jugador] = (victorias[jugador] ?? 0) + 1;
+        }
+      }
+      return victorias;
+    } catch (e) {
+      return {};
+    }
+  }
+
+  Future<Map<String, int>> getRankingGrupal() async {
+    try {
+      final snapshot = await _db
+          .collection('users')
+          .doc(_uid)
+          .collection('partidas')
+          .get();
+      final Map<String, int> victorias = {};
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        final ganador = data['ganador'] as String;
+        final List<String> equipo = ganador == 'equipoA'
+            ? List<String>.from(data['equipoA'] ?? [])
+            : List<String>.from(data['equipoB'] ?? []);
+        final nombreEquipo = equipo.join(' & ');
+        victorias[nombreEquipo] = (victorias[nombreEquipo] ?? 0) + 1;
+      }
+      return victorias;
+    } catch (e) {
+      return {};
+    }
   }
 }
