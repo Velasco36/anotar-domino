@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../models/team_data.dart';
 import './match_screen.dart';
+import 'package:flutter/services.dart';
 
 class TeamSetupScreen extends StatefulWidget {
   @override
@@ -116,7 +117,7 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
                 child: Column(
                   children: [
                     // Selector de modo
-                    _buildModeSelector(),
+
 
                     SizedBox(height: 10),
                     // Sección de título
@@ -168,7 +169,7 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
                   size: 24,
                 ),
                 onPressed: () {
-                  Navigator.pop(context);
+                  SystemNavigator.pop();
                 },
               ),
               Text(
@@ -190,53 +191,8 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
     );
   }
 
-  Widget _buildModeSelector() {
-    return Container(
-      padding: EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: Color(0xFFE2E8F0).withOpacity(0.6),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          _buildModeButton('Individual', 'individual'),
-          _buildModeButton('Equipos', 'teams'),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildModeButton(String label, String mode) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => setState(() => selectedMode = mode),
-        child: Container(
-          padding: EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            color: selectedMode == mode ? Colors.white : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-            boxShadow: selectedMode == mode
-                ? [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 2,
-                    ),
-                  ]
-                : [],
-          ),
-          child: Text(
-            label,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: selectedMode == mode ? primaryOrange : Color(0xFF64748B),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+
 
   Widget _buildTitleSection() {
     return Column(
