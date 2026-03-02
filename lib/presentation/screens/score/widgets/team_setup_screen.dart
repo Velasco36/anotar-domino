@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../../../models/team_data.dart';
-import './match_screen.dart';
 import 'package:flutter/services.dart';
+import '../../../../models/team_data.dart';
+import '../../../../services/partida_service.dart';
+import './match_screen.dart';
 
 class TeamSetupScreen extends StatefulWidget {
   @override
@@ -12,10 +13,12 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
   String selectedMode = 'teams';
   String selectedStarter = 'p1';
 
-  // Definir los colores naranja que usarás
-  static const Color primaryOrange = Color(0xFFF97316); // Naranja principal
-  static const Color lightOrange = Color(0xFFFED7AA); // Naranja claro
-  static const Color darkOrange = Color(0xFFEA580C); // Naranja oscuro
+  static const Color primaryOrange = Color(0xFFF97316);
+  static const Color lightOrange = Color(0xFFFED7AA);
+  static const Color darkOrange = Color(0xFFEA580C);
+
+  final PartidaService _partidaService = PartidaService();
+  List<String> _jugadoresGuardados = [];
 
   final TextEditingController teamAPlayer1Controller = TextEditingController(
     text: 'Alex',
@@ -33,28 +36,30 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
   @override
   void initState() {
     super.initState();
-    // Agregar listeners para actualizar la UI cuando cambian los textos
     teamAPlayer1Controller.addListener(_updateUI);
     teamAPlayer2Controller.addListener(_updateUI);
     teamBPlayer1Controller.addListener(_updateUI);
     teamBPlayer2Controller.addListener(_updateUI);
+    _cargarJugadores();
+  }
+
+  Future<void> _cargarJugadores() async {
+    final jugadores = await _partidaService.getJugadores();
+    if (mounted) {
+      setState(() => _jugadoresGuardados = jugadores);
+    }
   }
 
   void _updateUI() {
-    // Actualiza la UI cuando cambian los nombres
-    if (mounted) {
-      setState(() {});
-    }
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    // Remover los listeners
     teamAPlayer1Controller.removeListener(_updateUI);
     teamAPlayer2Controller.removeListener(_updateUI);
     teamBPlayer1Controller.removeListener(_updateUI);
     teamBPlayer2Controller.removeListener(_updateUI);
-
     teamAPlayer1Controller.dispose();
     teamAPlayer2Controller.dispose();
     teamBPlayer1Controller.dispose();
@@ -62,7 +67,6 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
     super.dispose();
   }
 
-  // Método para obtener el nombre según el playerId
   String _getNameForPlayerId(String playerId) {
     switch (playerId) {
       case 'p1':
@@ -78,8 +82,15 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
     }
   }
 
-  void _startMatch(BuildContext context) {
-    // Crear objeto con los datos del equipo
+  void _startMatch(BuildContext context) async {
+    // Guardar jugadores en Firestore
+    await _partidaService.guardarJugadores([
+      teamAPlayer1Controller.text.trim(),
+      teamAPlayer2Controller.text.trim(),
+      teamBPlayer1Controller.text.trim(),
+      teamBPlayer2Controller.text.trim(),
+    ]);
+
     final teamData = TeamData(
       teamAPlayer1: teamAPlayer1Controller.text,
       teamAPlayer2: teamAPlayer2Controller.text,
@@ -89,16 +100,13 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
       startingPlayerName: _getStartingPlayerName(),
     );
 
-    // Navegar a la pantalla del partido
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => MatchScreen(teamData: teamData)),
     );
   }
 
-  String _getStartingPlayerName() {
-    return _getNameForPlayerId(selectedStarter);
-  }
+  String _getStartingPlayerName() => _getNameForPlayerId(selectedStarter);
 
   @override
   Widget build(BuildContext context) {
@@ -106,36 +114,20 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
       backgroundColor: Color(0xFFF8FAFC),
       body: Column(
         children: [
-          // Header
           _buildHeader(context),
-
-          // Scrollable content
           Expanded(
             child: SingleChildScrollView(
               child: Padding(
                 padding: EdgeInsets.all(16),
                 child: Column(
                   children: [
-                    // Selector de modo
-
-
                     SizedBox(height: 10),
-                    // Sección de título
                     _buildTitleSection(),
-                      SizedBox(height: 10),
-
-                      // Entradas de equipos
+                    SizedBox(height: 10),
                     _buildTeamInputs(),
-
-
                     SizedBox(height: 24),
-
-                    // Mesa con jugadores
                     _buildTable(),
-
                     SizedBox(height: 32),
-
-
                   ],
                 ),
               ),
@@ -143,8 +135,6 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
           ),
         ],
       ),
-
-      // Botón inferior
       bottomNavigationBar: _buildBottomButton(context),
     );
   }
@@ -168,9 +158,7 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
                   color: primaryOrange,
                   size: 24,
                 ),
-                onPressed: () {
-                  SystemNavigator.pop();
-                },
+                onPressed: () => SystemNavigator.pop(),
               ),
               Text(
                 'Configuración de Equipos',
@@ -191,13 +179,9 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
     );
   }
 
-
-
-
   Widget _buildTitleSection() {
     return Column(
       children: [
-
         SizedBox(height: 4),
         Text(
           'Toca un jugador en la mesa para establecer quién empieza',
@@ -207,13 +191,190 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
     );
   }
 
+  Widget _buildTeamInputs() {
+    return Row(
+      children: [
+        Expanded(
+          child: _buildTeamInputCard(
+            title: 'JUGADORES EQUIPO A',
+            titleColor: primaryOrange,
+            backgroundColor: Colors.white,
+            borderColor: lightOrange.withOpacity(0.5),
+            controller1: teamAPlayer1Controller,
+            controller2: teamAPlayer2Controller,
+          ),
+        ),
+        SizedBox(width: 12),
+        Expanded(
+          child: _buildTeamInputCard(
+            title: 'JUGADORES EQUIPO B',
+            titleColor: darkOrange,
+            backgroundColor: Color(0xFFFFEDD5).withOpacity(0.5),
+            borderColor: Color(0xFFFDBA74).withOpacity(0.5),
+            controller1: teamBPlayer1Controller,
+            controller2: teamBPlayer2Controller,
+            isTeamB: true,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTeamInputCard({
+    required String title,
+    required Color titleColor,
+    required Color backgroundColor,
+    required Color borderColor,
+    required TextEditingController controller1,
+    required TextEditingController controller2,
+    bool isTeamB = false,
+  }) {
+    return Container(
+      padding: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              color: titleColor,
+              letterSpacing: 0.5,
+            ),
+          ),
+          SizedBox(height: 8),
+          _buildAutocompleteField(controller1, isTeamB: isTeamB),
+          SizedBox(height: 8),
+          _buildAutocompleteField(controller2, isTeamB: isTeamB),
+        ],
+      ),
+    );
+  }
+
+  // ─── Campo con Autocomplete ───
+  Widget _buildAutocompleteField(
+    TextEditingController controller, {
+    bool isTeamB = false,
+  }) {
+    return Autocomplete<String>(
+      // Valor inicial
+      initialValue: TextEditingValue(text: controller.text),
+
+      // Filtra las opciones según lo que escribe el usuario
+      optionsBuilder: (TextEditingValue textEditingValue) {
+        final query = textEditingValue.text.toLowerCase();
+        if (query.isEmpty) return _jugadoresGuardados;
+        return _jugadoresGuardados.where(
+          (nombre) => nombre.toLowerCase().contains(query),
+        );
+      },
+
+      // Cuántas opciones mostrar
+      optionsMaxHeight: 180,
+
+      // Cómo se ve cada opción en el dropdown
+      optionsViewBuilder: (context, onSelected, options) {
+        return Align(
+          alignment: Alignment.topLeft,
+          child: Material(
+            elevation: 4,
+            borderRadius: BorderRadius.circular(8),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: 180),
+              child: ListView.builder(
+                padding: EdgeInsets.zero,
+                shrinkWrap: true,
+                itemCount: options.length,
+                itemBuilder: (context, index) {
+                  final nombre = options.elementAt(index);
+                  return InkWell(
+                    onTap: () => onSelected(nombre),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.person, size: 16, color: primaryOrange),
+                          SizedBox(width: 8),
+                          Text(
+                            nombre,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      },
+
+      // Cómo se ve el campo de texto
+      fieldViewBuilder:
+          (context, fieldController, focusNode, onFieldSubmitted) {
+            // Sincroniza el controller externo con el interno del Autocomplete
+            fieldController.text = controller.text;
+            fieldController.addListener(() {
+              controller.text = fieldController.text;
+            });
+
+            return TextField(
+              controller: fieldController,
+              focusNode: focusNode,
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: isTeamB
+                    ? Colors.white.withOpacity(0.8)
+                    : Color(0xFFF8FAFC),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 4,
+                ),
+                isDense: true,
+                suffixIcon: _jugadoresGuardados.isNotEmpty
+                    ? Icon(
+                        Icons.arrow_drop_down,
+                        size: 16,
+                        color: Color(0xFFCBD5E1),
+                      )
+                    : null,
+              ),
+              onChanged: (value) => setState(() {}),
+            );
+          },
+
+      // Cuando selecciona una opción
+      onSelected: (String nombre) {
+        controller.text = nombre;
+        setState(() {});
+      },
+    );
+  }
+
   Widget _buildTable() {
     return SizedBox(
       width: double.infinity,
       height: 380,
       child: Stack(
         children: [
-          // Mesa central
           Center(
             child: Container(
               width: 176,
@@ -242,8 +403,6 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
               ),
             ),
           ),
-
-          // Jugadores
           _buildPlayerSeatPositioned(
             playerId: 'p1',
             name: _getNameForPlayerId('p1'),
@@ -253,7 +412,6 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
             bgColor: Color(0xFFF8FAFC),
             iconColor: lightOrange,
           ),
-
           _buildPlayerSeatPositioned(
             playerId: 'p2',
             name: _getNameForPlayerId('p2'),
@@ -263,7 +421,6 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
             bgColor: Color(0xFFF8FAFC),
             iconColor: lightOrange,
           ),
-
           _buildPlayerSeatPositioned(
             playerId: 'p3',
             name: _getNameForPlayerId('p3'),
@@ -273,7 +430,6 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
             bgColor: Color(0xFFFFEDD5),
             iconColor: Color(0xFFFDBA74),
           ),
-
           _buildPlayerSeatPositioned(
             playerId: 'p4',
             name: _getNameForPlayerId('p4'),
@@ -297,8 +453,8 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
     required Color bgColor,
     required Color iconColor,
   }) {
-    Alignment alignment;
     double? top, bottom, left, right;
+    Alignment alignment;
 
     switch (position) {
       case PlayerPosition.top:
@@ -360,7 +516,7 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
 
     return GestureDetector(
       onTap: () => setState(() => selectedStarter = playerId),
-      child: Container(
+      child: SizedBox(
         width: 128,
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -464,95 +620,6 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
     );
   }
 
-  Widget _buildTeamInputs() {
-    return Row(
-      children: [
-        Expanded(
-          child: _buildTeamInputCard(
-            title: 'JUGADORES EQUIPO A',
-            titleColor: primaryOrange,
-            backgroundColor: Colors.white,
-            borderColor: lightOrange.withOpacity(0.5),
-            controller1: teamAPlayer1Controller,
-            controller2: teamAPlayer2Controller,
-          ),
-        ),
-        SizedBox(width: 12),
-        Expanded(
-          child: _buildTeamInputCard(
-            title: 'JUGADORES EQUIPO B',
-            titleColor: darkOrange,
-            backgroundColor: Color(0xFFFFEDD5).withOpacity(0.5),
-            borderColor: Color(0xFFFDBA74).withOpacity(0.5),
-            controller1: teamBPlayer1Controller,
-            controller2: teamBPlayer2Controller,
-            isTeamB: true,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTeamInputCard({
-    required String title,
-    required Color titleColor,
-    required Color backgroundColor,
-    required Color borderColor,
-    required TextEditingController controller1,
-    required TextEditingController controller2,
-    bool isTeamB = false,
-  }) {
-    return Container(
-      padding: EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: borderColor),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w800,
-              color: titleColor,
-              letterSpacing: 0.5,
-            ),
-          ),
-          SizedBox(height: 8),
-          _buildTextField(controller1, isTeamB: isTeamB),
-          SizedBox(height: 8),
-          _buildTextField(controller2, isTeamB: isTeamB),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTextField(
-    TextEditingController controller, {
-    bool isTeamB = false,
-  }) {
-    return TextField(
-      controller: controller,
-      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-      onChanged: (value) {
-        setState(() {});
-      },
-      decoration: InputDecoration(
-        filled: true,
-        fillColor: isTeamB ? Colors.white.withOpacity(0.8) : Color(0xFFF8FAFC),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide.none,
-        ),
-        contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        isDense: true,
-      ),
-    );
-  }
-
   Widget _buildBottomButton(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
@@ -572,7 +639,6 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
                 borderRadius: BorderRadius.circular(16),
               ),
               elevation: 0,
-              shadowColor: primaryOrange.withOpacity(0.2),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -591,7 +657,5 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
     );
   }
 }
-
-// ============ Enums y Modelos ============
 
 enum PlayerPosition { top, bottom, left, right }
