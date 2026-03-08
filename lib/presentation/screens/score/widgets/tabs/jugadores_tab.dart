@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import './../../../../../services/partida_service.dart';
 
 class JugadoresTab extends StatefulWidget {
   const JugadoresTab({Key? key}) : super(key: key);
-
   @override
   State<JugadoresTab> createState() => _JugadoresTabState();
 }
@@ -13,7 +11,6 @@ class _JugadoresTabState extends State<JugadoresTab>
     with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
-
   static const Color primaryColor = Color(0xFFf97316);
   static const Color primaryLight = Color(0xFFfff7ed);
   static const Color charcoalColor = Color(0xFF0f172a);
@@ -21,11 +18,10 @@ class _JugadoresTabState extends State<JugadoresTab>
   static const Color slate200 = Color(0xFFe2e8f0);
   static const Color slate400 = Color(0xFF94a3b8);
   static const Color slate500 = Color(0xFF64748b);
-
+  final PartidaService _partidaService = PartidaService();
   String _searchQuery = '';
   List<String> _todosLosJugadores = [];
   bool _loading = true;
-
   @override
   void initState() {
     super.initState();
@@ -33,32 +29,19 @@ class _JugadoresTabState extends State<JugadoresTab>
   }
 
   Future<void> _cargarJugadores() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
     try {
-      final doc = await FirebaseFirestore.instance
-          .collection('jugadores')
-          .doc(uid)
-          .get();
-      if (doc.exists) {
-        final nombres = List<String>.from(doc.data()?['nombres'] ?? []);
-        setState(() {
-          _todosLosJugadores = nombres;
-          _loading = false;
-        });
-      } else {
-        setState(() => _loading = false);
-      }
+      final nombres = await _partidaService.getJugadores();
+      setState(() {
+        _todosLosJugadores = nombres;
+        _loading = false;
+      });
     } catch (_) {
       setState(() => _loading = false);
     }
   }
 
-  // ✅ Eliminar jugador de Firestore
+  // ─── Eliminar jugador ───
   Future<void> _eliminarJugador(String nombre) async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
-
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -73,8 +56,8 @@ class _JugadoresTabState extends State<JugadoresTab>
           ),
         ),
         content: Text(
-          '¿Eliminar a "$nombre" de la lista? Sus partidas no se verán afectadas.',
-          style: TextStyle(fontSize: 13, color: slate500),
+          '¿Eliminar a "$nombre" de la lista?',
+          style: const TextStyle(fontSize: 13, color: slate500),
         ),
         actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         actions: [
@@ -120,13 +103,9 @@ class _JugadoresTabState extends State<JugadoresTab>
         ],
       ),
     );
-
     if (confirmed == true) {
-      setState(() => _todosLosJugadores.remove(nombre));
-      await FirebaseFirestore.instance.collection('jugadores').doc(uid).update({
-        'nombres': _todosLosJugadores,
-      });
-
+      await _partidaService.eliminarJugador(nombre);
+      await _cargarJugadores();
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -153,14 +132,242 @@ class _JugadoresTabState extends State<JugadoresTab>
     }
   }
 
+  // ─── Editar jugador — Bottom Sheet ───
+// ─── Editar jugador — Bottom Sheet ───
+  void _editarJugador(String nombreActual) {
+    final controller = TextEditingController(text: nombreActual);
+    final formKey = GlobalKey<FormState>();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
+          ),
+          child: Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Handle
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: slate200,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  // Icono
+                  Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      color: primaryColor.withOpacity(0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.edit_outlined,
+                      size: 28,
+                      color: primaryColor,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Título
+                  const Text(
+                    'Editar jugador',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      color: charcoalColor,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Cambia el nombre del jugador (máx. 10 caracteres)',
+                    style: TextStyle(fontSize: 13, color: slate400),
+                  ),
+                  const SizedBox(height: 24),
+                  // Campo de texto
+                  TextFormField(
+                    controller: controller,
+                    autofocus: true,
+                    textCapitalization: TextCapitalization.characters,
+                    maxLength: 10, // 👈 Límite de 10 caracteres
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: charcoalColor,
+                    ),
+                    decoration: InputDecoration(
+                      labelText: 'Nombre',
+                      labelStyle: TextStyle(
+                        fontSize: 13,
+                        color: slate400,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      filled: true,
+                      fillColor: slate100,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(
+                          color: primaryColor,
+                          width: 2,
+                        ),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                      prefixIcon: const Icon(
+                        Icons.person_outline,
+                        color: primaryColor,
+                        size: 20,
+                      ),
+                      counterStyle: TextStyle(
+                        fontSize: 11,
+                        color: slate400,
+                      ), // 👈 Estilo para el contador
+                    ),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'El nombre no puede estar vacío';
+                      }
+                      if (value.trim().length > 10) {
+                        return 'El nombre no puede tener más de 10 caracteres';
+                      }
+                      final nuevoNombre = value.trim().toUpperCase();
+                      if (nuevoNombre != nombreActual &&
+                          _todosLosJugadores.contains(nuevoNombre)) {
+                        return 'Ya existe un jugador con ese nombre';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                  // Botones
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          style: TextButton.styleFrom(
+                            backgroundColor: slate100,
+                            foregroundColor: slate500,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            'Cancelar',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            if (!formKey.currentState!.validate()) return;
+                            final nuevoNombre = controller.text
+                                .trim()
+                                .toUpperCase();
+                            if (nuevoNombre == nombreActual) {
+                              Navigator.pop(ctx);
+                              return;
+                            }
+                            await _partidaService.renombrarJugador(
+                              nombreActual,
+                              nuevoNombre,
+                            );
+                            await _cargarJugadores();
+                            if (ctx.mounted) Navigator.pop(ctx);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.check_circle_outline,
+                                        color: Colors.white,
+                                        size: 18,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Renombrado a "$nuevoNombre"',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  backgroundColor: const Color(0xFF22c55e),
+                                  behavior: SnackBarBehavior.floating,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  margin: const EdgeInsets.fromLTRB(
+                                    16,
+                                    0,
+                                    16,
+                                    16,
+                                  ),
+                                  duration: const Duration(seconds: 2),
+                                ),
+                              );
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: primaryColor,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: const Text(
+                            'Guardar',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
   @override
   Widget build(BuildContext context) {
     super.build(context);
-
     final filtrados = _todosLosJugadores
         .where((j) => j.toLowerCase().contains(_searchQuery.toLowerCase()))
         .toList();
-
     return Column(
       children: [
         // ─── Buscador + contador ───
@@ -192,7 +399,6 @@ class _JugadoresTabState extends State<JugadoresTab>
                 ),
               ),
               const SizedBox(width: 10),
-              // Contador de jugadores
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 14,
@@ -214,7 +420,6 @@ class _JugadoresTabState extends State<JugadoresTab>
             ],
           ),
         ),
-
         // ─── Lista ───
         Expanded(
           child: _loading
@@ -240,8 +445,6 @@ class _JugadoresTabState extends State<JugadoresTab>
 
   Widget _buildJugadorCard(String nombre) {
     final inicial = nombre.isNotEmpty ? nombre[0].toUpperCase() : '?';
-
-    // ✅ Swipe para eliminar
     return Dismissible(
       key: Key(nombre),
       direction: DismissDirection.endToStart,
@@ -293,7 +496,7 @@ class _JugadoresTabState extends State<JugadoresTab>
             padding: const EdgeInsets.all(14),
             child: Row(
               children: [
-                // ✅ Avatar solo en primaryColor
+                // Avatar
                 Container(
                   width: 44,
                   height: 44,
@@ -313,7 +516,6 @@ class _JugadoresTabState extends State<JugadoresTab>
                   ),
                 ),
                 const SizedBox(width: 14),
-
                 // Nombre
                 Expanded(
                   child: Column(
@@ -334,8 +536,25 @@ class _JugadoresTabState extends State<JugadoresTab>
                     ],
                   ),
                 ),
-
-                // ✅ Botón eliminar visible en la card
+                // Botón editar
+                GestureDetector(
+                  onTap: () => _editarJugador(nombre),
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    margin: const EdgeInsets.only(right: 6),
+                    decoration: BoxDecoration(
+                      color: primaryColor.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.edit_outlined,
+                      size: 16,
+                      color: primaryColor,
+                    ),
+                  ),
+                ),
+                // Botón eliminar
                 GestureDetector(
                   onTap: () => _eliminarJugador(nombre),
                   child: Container(
@@ -353,7 +572,6 @@ class _JugadoresTabState extends State<JugadoresTab>
                     ),
                   ),
                 ),
-
                 Icon(Icons.arrow_forward_ios, size: 14, color: slate400),
               ],
             ),
@@ -368,7 +586,8 @@ class _JugadoresTabState extends State<JugadoresTab>
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => JugadorDetalleSheet(nombre: nombre),
+      builder: (_) =>
+          JugadorDetalleSheet(nombre: nombre, partidaService: _partidaService),
     );
   }
 
@@ -403,13 +622,17 @@ class _JugadoresTabState extends State<JugadoresTab>
   }
 }
 
-// ══════════════════════════════════════════════════════════════
+// ════════════════════════��═════════════════════════════════════
 // BOTTOM SHEET — detalle del jugador
 // ══════════════════════════════════════════════════════════════
 class JugadorDetalleSheet extends StatefulWidget {
   final String nombre;
-  const JugadorDetalleSheet({Key? key, required this.nombre}) : super(key: key);
-
+  final PartidaService partidaService;
+  const JugadorDetalleSheet({
+    Key? key,
+    required this.nombre,
+    required this.partidaService,
+  }) : super(key: key);
   @override
   State<JugadorDetalleSheet> createState() => _JugadorDetalleSheetState();
 }
@@ -420,9 +643,7 @@ class _JugadorDetalleSheetState extends State<JugadorDetalleSheet> {
   static const Color slate100 = Color(0xFFf1f5f9);
   static const Color slate200 = Color(0xFFe2e8f0);
   static const Color slate400 = Color(0xFF94a3b8);
-
   Map<String, dynamic>? _stats;
-
   @override
   void initState() {
     super.initState();
@@ -430,46 +651,8 @@ class _JugadorDetalleSheetState extends State<JugadorDetalleSheet> {
   }
 
   Future<void> _cargarStats() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
-
-    final snapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .collection('partidas')
-        .get();
-
-    int victorias = 0, derrotas = 0, totalPartidas = 0;
-
-    for (final doc in snapshot.docs) {
-      final data = doc.data();
-      final equipoA = List<String>.from(data['equipoA'] ?? []);
-      final equipoB = List<String>.from(data['equipoB'] ?? []);
-      final ganador = data['ganador'] as String;
-      final estaEnA = equipoA.contains(widget.nombre);
-      final estaEnB = equipoB.contains(widget.nombre);
-
-      if (estaEnA || estaEnB) {
-        totalPartidas++;
-        if ((estaEnA && ganador == 'equipoA') ||
-            (estaEnB && ganador == 'equipoB')) {
-          victorias++;
-        } else {
-          derrotas++;
-        }
-      }
-    }
-
-    setState(() {
-      _stats = {
-        'victorias': victorias,
-        'derrotas': derrotas,
-        'totalPartidas': totalPartidas,
-        'winRate': totalPartidas > 0
-            ? (victorias / totalPartidas * 100).toStringAsFixed(0)
-            : '0',
-      };
-    });
+    final stats = await widget.partidaService.getStatsJugador(widget.nombre);
+    setState(() => _stats = stats);
   }
 
   @override
@@ -477,7 +660,6 @@ class _JugadorDetalleSheetState extends State<JugadorDetalleSheet> {
     final inicial = widget.nombre.isNotEmpty
         ? widget.nombre[0].toUpperCase()
         : '?';
-
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -497,7 +679,6 @@ class _JugadorDetalleSheetState extends State<JugadorDetalleSheet> {
             ),
           ),
           const SizedBox(height: 24),
-
           // Avatar
           Container(
             width: 72,
@@ -518,7 +699,6 @@ class _JugadorDetalleSheetState extends State<JugadorDetalleSheet> {
             ),
           ),
           const SizedBox(height: 12),
-
           Text(
             widget.nombre,
             style: const TextStyle(
@@ -533,7 +713,6 @@ class _JugadorDetalleSheetState extends State<JugadorDetalleSheet> {
             style: TextStyle(fontSize: 13, color: slate400),
           ),
           const SizedBox(height: 24),
-
           // Stats
           if (_stats == null)
             const CircularProgressIndicator(color: primaryColor)
@@ -557,7 +736,6 @@ class _JugadorDetalleSheetState extends State<JugadorDetalleSheet> {
               ],
             ),
           const SizedBox(height: 24),
-
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(

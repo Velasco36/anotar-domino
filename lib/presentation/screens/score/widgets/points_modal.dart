@@ -59,7 +59,7 @@ class _PointsModalState extends State<PointsModal> {
       width: double.infinity,
       decoration: BoxDecoration(
         color: Colors.white,
-        
+
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(24),
           topRight: Radius.circular(24),

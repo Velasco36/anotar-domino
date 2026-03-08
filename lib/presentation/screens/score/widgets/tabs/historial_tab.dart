@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../../services/partida_service.dart';
 import '../partida_detail_screen.dart';
 
@@ -18,6 +17,8 @@ class _HistorialTabState extends State<HistorialTab>
 
   final PartidaService _partidaService = PartidaService();
   String _searchQuery = '';
+  List<Map<String, dynamic>> _partidas = [];
+  bool _cargando = true;
 
   static const Color primaryColor = Color(0xFFf97316);
   static const Color charcoalColor = Color(0xFF0f172a);
@@ -26,8 +27,23 @@ class _HistorialTabState extends State<HistorialTab>
   static const Color slate400 = Color(0xFF94a3b8);
   static const Color slate500 = Color(0xFF64748b);
 
-  // ✅ Dialog de confirmación antes de eliminar
-  Future<void> _confirmarEliminar(BuildContext context, String docId) async {
+  @override
+  void initState() {
+    super.initState();
+    _cargar();
+  }
+
+  Future<void> _cargar() async {
+    setState(() => _cargando = true);
+    final partidas = await _partidaService.getPartidas();
+    if (mounted)
+      setState(() {
+        _partidas = partidas;
+        _cargando = false;
+      });
+  }
+
+  Future<void> _confirmarEliminar(BuildContext context, String id) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -91,7 +107,8 @@ class _HistorialTabState extends State<HistorialTab>
     );
 
     if (confirmed == true) {
-      await _partidaService.eliminarPartida(docId);
+      await _partidaService.eliminarPartida(id);
+      await _cargar();
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -118,7 +135,6 @@ class _HistorialTabState extends State<HistorialTab>
     }
   }
 
-  // ✅ Confirmar restablecer todo el historial
   Future<void> _confirmarRestablecerTodo(BuildContext context) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -184,6 +200,7 @@ class _HistorialTabState extends State<HistorialTab>
 
     if (confirmed == true) {
       await _partidaService.eliminarTodoElHistorial();
+      await _cargar();
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -216,7 +233,7 @@ class _HistorialTabState extends State<HistorialTab>
 
     return Column(
       children: [
-        // ─── Buscador + botón restablecer ───
+        // ─── Buscador + restablecer ───
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
           child: Row(
@@ -246,7 +263,6 @@ class _HistorialTabState extends State<HistorialTab>
                 ),
               ),
               const SizedBox(width: 10),
-              // ✅ Botón restablecer todo
               GestureDetector(
                 onTap: () => _confirmarRestablecerTodo(context),
                 child: Container(
@@ -272,88 +288,81 @@ class _HistorialTabState extends State<HistorialTab>
 
         // ─── Lista ───
         Expanded(
-          child: StreamBuilder<QuerySnapshot>(
-            stream: _partidaService.getHistorial(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(
+          child: _cargando
+              ? const Center(
                   child: CircularProgressIndicator(color: primaryColor),
-                );
-              }
-
-              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                return _buildEmpty();
-              }
-
-              final docs = snapshot.data!.docs.where((doc) {
-                if (_searchQuery.isEmpty) return true;
-                final data = doc.data() as Map<String, dynamic>;
-                final a = (data['equipoA'] as List).join(' ').toLowerCase();
-                final b = (data['equipoB'] as List).join(' ').toLowerCase();
-                return a.contains(_searchQuery) || b.contains(_searchQuery);
-              }).toList();
-
-              if (docs.isEmpty) {
-                return _buildEmpty(
-                  mensaje: 'Sin resultados para "$_searchQuery"',
-                );
-              }
-
-              return ListView.builder(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
-                itemCount: docs.length,
-                itemBuilder: (context, index) {
-                  final doc = docs[index];
-                  final data = doc.data() as Map<String, dynamic>;
-
-                  // ✅ Swipe izquierda para eliminar
-                  return Dismissible(
-                    key: Key(doc.id),
-                    direction: DismissDirection.endToStart,
-                    confirmDismiss: (_) async {
-                      await _confirmarEliminar(context, doc.id);
-                      return false; // siempre false — el stream actualiza solo
-                    },
-                    background: Container(
-                      margin: const EdgeInsets.only(bottom: 10),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFef4444),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      alignment: Alignment.centerRight,
-                      padding: const EdgeInsets.only(right: 20),
-                      child: const Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.delete_outline,
-                            color: Colors.white,
-                            size: 22,
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            'Eliminar',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    child: _buildPartidaCard(data, doc.id),
-                  );
-                },
-              );
-            },
-          ),
+                )
+              : RefreshIndicator(
+                  color: primaryColor,
+                  onRefresh: _cargar,
+                  child: _buildLista(),
+                ),
         ),
       ],
     );
   }
 
-  Widget _buildPartidaCard(Map<String, dynamic> data, String docId) {
+  Widget _buildLista() {
+    final docs = _partidas.where((data) {
+      if (_searchQuery.isEmpty) return true;
+      final a = (data['equipoA'] as List).join(' ').toLowerCase();
+      final b = (data['equipoB'] as List).join(' ').toLowerCase();
+      return a.contains(_searchQuery) || b.contains(_searchQuery);
+    }).toList();
+
+    if (docs.isEmpty) {
+      return _buildEmpty(
+        mensaje: _searchQuery.isNotEmpty
+            ? 'Sin resultados para "$_searchQuery"'
+            : null,
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
+      itemCount: docs.length,
+      itemBuilder: (context, index) {
+        final data = docs[index];
+        final id = data['id'] as String;
+
+        return Dismissible(
+          key: Key(id),
+          direction: DismissDirection.endToStart,
+          confirmDismiss: (_) async {
+            await _confirmarEliminar(context, id);
+            return false;
+          },
+          background: Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFef4444),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            alignment: Alignment.centerRight,
+            padding: const EdgeInsets.only(right: 20),
+            child: const Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.delete_outline, color: Colors.white, size: 22),
+                SizedBox(height: 4),
+                Text(
+                  'Eliminar',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          child: _buildPartidaCard(data, id),
+        );
+      },
+    );
+  }
+
+  Widget _buildPartidaCard(Map<String, dynamic> data, String id) {
     final equipoA = (data['equipoA'] as List).join(' & ');
     final equipoB = (data['equipoB'] as List).join(' & ');
     final puntajes = data['puntajes'] as Map<String, dynamic>;
@@ -361,9 +370,10 @@ class _HistorialTabState extends State<HistorialTab>
     final puntajeB = puntajes['equipoB'] as int;
     final ganadorEsA = data['ganador'] == 'equipoA';
 
+    // ✅ Fecha desde ISO string (sin Timestamp de Firestore)
     String fechaTexto = '';
     if (data['fecha'] != null) {
-      final fecha = (data['fecha'] as Timestamp).toDate();
+      final fecha = DateTime.parse(data['fecha'] as String);
       final diff = DateTime.now().difference(fecha);
       if (diff.inDays == 0)
         fechaTexto = 'Hoy, ${DateFormat('HH:mm').format(fecha)}';
@@ -396,7 +406,7 @@ class _HistorialTabState extends State<HistorialTab>
           padding: const EdgeInsets.all(14),
           child: Column(
             children: [
-              // Fecha + botón eliminar
+              // Fecha + eliminar
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -412,9 +422,8 @@ class _HistorialTabState extends State<HistorialTab>
                     children: [
                       Icon(Icons.emoji_events, color: primaryColor, size: 16),
                       const SizedBox(width: 6),
-                      // ✅ Botón eliminar visible en la card
                       GestureDetector(
-                        onTap: () => _confirmarEliminar(context, docId),
+                        onTap: () => _confirmarEliminar(context, id),
                         child: Container(
                           width: 28,
                           height: 28,
@@ -440,7 +449,6 @@ class _HistorialTabState extends State<HistorialTab>
               // Equipos y marcador
               Row(
                 children: [
-                  // Equipo A
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
@@ -470,8 +478,6 @@ class _HistorialTabState extends State<HistorialTab>
                     ),
                   ),
                   const SizedBox(width: 12),
-
-                  // Marcador
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 14,
@@ -513,8 +519,6 @@ class _HistorialTabState extends State<HistorialTab>
                     ),
                   ),
                   const SizedBox(width: 12),
-
-                  // Equipo B
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,

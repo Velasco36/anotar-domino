@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../../services/partida_service.dart';
 
 class RankingTab extends StatefulWidget {
@@ -15,7 +14,7 @@ class _RankingTabState extends State<RankingTab>
   bool get wantKeepAlive => true;
 
   final PartidaService _partidaService = PartidaService();
-  String _vista = 'individual'; // 'individual' | 'grupal'
+  String _vista = 'individual';
 
   static const Color primaryColor = Color(0xFFf97316);
   static const Color primaryLightColor = Color(0xFFfff7ed);
@@ -24,13 +23,10 @@ class _RankingTabState extends State<RankingTab>
   static const Color slate400 = Color(0xFF94a3b8);
   static const Color slate500 = Color(0xFF64748b);
 
-  // ✅ Calcula el ranking individual desde los docs del stream
-  Map<String, int> _calcularRankingIndividual(
-    List<QueryDocumentSnapshot> docs,
-  ) {
+  // ✅ Calcula ranking individual desde lista local
+  Map<String, int> _calcularRankingIndividual(List<Map<String, dynamic>> docs) {
     final Map<String, int> victorias = {};
-    for (final doc in docs) {
-      final data = doc.data() as Map<String, dynamic>;
+    for (final data in docs) {
       final ganador = data['ganador'] as String;
       final List<String> ganadores = ganador == 'equipoA'
           ? List<String>.from(data['equipoA'] ?? [])
@@ -42,11 +38,10 @@ class _RankingTabState extends State<RankingTab>
     return victorias;
   }
 
-  // ✅ Calcula el ranking grupal desde los docs del stream
-  Map<String, int> _calcularRankingGrupal(List<QueryDocumentSnapshot> docs) {
+  // ✅ Calcula ranking grupal desde lista local
+  Map<String, int> _calcularRankingGrupal(List<Map<String, dynamic>> docs) {
     final Map<String, int> victorias = {};
-    for (final doc in docs) {
-      final data = doc.data() as Map<String, dynamic>;
+    for (final data in docs) {
       final ganador = data['ganador'] as String;
       final List<String> equipo = ganador == 'equipoA'
           ? List<String>.from(data['equipoA'] ?? [])
@@ -81,10 +76,10 @@ class _RankingTabState extends State<RankingTab>
           ),
         ),
 
-        // ✅ StreamBuilder — reacciona automáticamente a cambios en el historial
+        // ✅ FutureBuilder — usa datos locales
         Expanded(
-          child: StreamBuilder<QuerySnapshot>(
-            stream: _partidaService.getHistorial(),
+          child: FutureBuilder<List<Map<String, dynamic>>>(
+            future: _partidaService.getPartidas(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(
@@ -92,15 +87,13 @@ class _RankingTabState extends State<RankingTab>
                 );
               }
 
-              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+              if (!snapshot.hasData || snapshot.data!.isEmpty) {
                 return _buildEmpty();
               }
 
-              final docs = snapshot.data!.docs;
-
               final rankingMap = _vista == 'individual'
-                  ? _calcularRankingIndividual(docs)
-                  : _calcularRankingGrupal(docs);
+                  ? _calcularRankingIndividual(snapshot.data!)
+                  : _calcularRankingGrupal(snapshot.data!);
 
               if (rankingMap.isEmpty) return _buildEmpty();
 
@@ -110,13 +103,11 @@ class _RankingTabState extends State<RankingTab>
               return ListView.builder(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
                 itemCount: ranking.length,
-                itemBuilder: (context, index) {
-                  return _buildRankingItem(
-                    ranking[index].key,
-                    ranking[index].value,
-                    index,
-                  );
-                },
+                itemBuilder: (context, index) => _buildRankingItem(
+                  ranking[index].key,
+                  ranking[index].value,
+                  index,
+                ),
               );
             },
           ),
@@ -162,7 +153,6 @@ class _RankingTabState extends State<RankingTab>
 
   Widget _buildRankingItem(String nombre, int victorias, int pos) {
     final isPodio = pos < 3;
-
     Color medalColor = slate400;
     if (pos == 0) medalColor = const Color(0xFFFFD700);
     if (pos == 1) medalColor = const Color(0xFFC0C0C0);

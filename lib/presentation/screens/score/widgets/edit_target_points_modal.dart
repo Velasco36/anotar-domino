@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class EditTargetPointsModal extends StatefulWidget {
   final int currentScore;
@@ -52,8 +53,41 @@ class _EditTargetPointsModalState extends State<EditTargetPointsModal> {
   void _setPresetScore(int score) {
     setState(() {
       _selectedScore = score;
-      _textController.text = _selectedScore.toString();
+      _textController.text = score.toString();
     });
+  }
+
+  void _validateAndUpdate(String value) {
+    String cleanValue = value.trim();
+
+    if (cleanValue.isEmpty) return;
+
+    if (cleanValue.length > 1 && cleanValue.startsWith('0')) {
+      cleanValue = cleanValue.replaceFirst(RegExp(r'^0+'), '');
+    }
+
+    final parsed = int.tryParse(cleanValue);
+
+    if (parsed != null) {
+      if (parsed >= 25 && parsed <= 999) {
+        setState(() {
+          _selectedScore = parsed;
+          _textController.text = parsed.toString();
+        });
+      } else if (parsed < 25) {
+        setState(() {
+          _selectedScore = 25;
+          _textController.text = '25';
+        });
+      } else {
+        setState(() {
+          _selectedScore = 999;
+          _textController.text = '999';
+        });
+      }
+    } else {
+      _textController.text = _selectedScore.toString();
+    }
   }
 
   @override
@@ -64,16 +98,11 @@ class _EditTargetPointsModalState extends State<EditTargetPointsModal> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Espacio para deslizar hacia abajo para cerrar
             GestureDetector(
               onTap: widget.onCancel,
-              child: Container(
-                height: 15,
-                color: Colors.transparent,
-              ),
+              child: Container(height: 15, color: Colors.transparent),
             ),
 
-            // Contenido del modal
             Container(
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -84,17 +113,18 @@ class _EditTargetPointsModalState extends State<EditTargetPointsModal> {
                   BoxShadow(
                     color: Colors.black.withOpacity(0.2),
                     blurRadius: 20,
-                    spreadRadius: 0,
                     offset: const Offset(0, -4),
                   ),
                 ],
               ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 20,
+                ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Indicador de deslizamiento
                     Center(
                       child: Container(
                         width: 48,
@@ -108,46 +138,37 @@ class _EditTargetPointsModalState extends State<EditTargetPointsModal> {
 
                     const SizedBox(height: 24),
 
-                    // Título
                     const Text(
                       'Límite de Puntos',
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.w900,
                         color: Color(0xFF0f172a),
-                        fontFamily: 'PlusJakartaSans',
                       ),
                     ),
 
                     const SizedBox(height: 8),
 
-                    // Subtítulo
                     const Text(
                       'Define el puntaje para ganar la partida',
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
                         color: Color(0xFF64748b),
-                        fontFamily: 'PlusJakartaSans',
                       ),
                     ),
 
                     const SizedBox(height: 32),
 
-                    // Contenedor de puntos
                     Container(
                       decoration: BoxDecoration(
                         color: const Color(0xFFf8fafc),
                         borderRadius: BorderRadius.circular(24),
-                        border: Border.all(
-                          color: const Color(0xFFe2e8f0),
-                          width: 1,
-                        ),
+                        border: Border.all(color: const Color(0xFFe2e8f0)),
                       ),
                       padding: const EdgeInsets.all(24),
                       child: Column(
                         children: [
-                          // Etiqueta "Puntos Objetivo"
                           const Text(
                             'PUNTOS OBJETIVO',
                             style: TextStyle(
@@ -160,11 +181,9 @@ class _EditTargetPointsModalState extends State<EditTargetPointsModal> {
 
                           const SizedBox(height: 24),
 
-                          // Controles de incremento/decremento
+                          /// ROW CORREGIDO (SIN OVERFLOW)
                           Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              // Botón decremento
                               GestureDetector(
                                 onTap: _decrementScore,
                                 child: Container(
@@ -185,11 +204,9 @@ class _EditTargetPointsModalState extends State<EditTargetPointsModal> {
                                 ),
                               ),
 
-                              const SizedBox(width: 32),
+                              const SizedBox(width: 16),
 
-                              // Input de puntos
-                              SizedBox(
-                                width: 96,
+                              Expanded(
                                 child: Column(
                                   children: [
                                     TextField(
@@ -199,31 +216,28 @@ class _EditTargetPointsModalState extends State<EditTargetPointsModal> {
                                         fontSize: 48,
                                         fontWeight: FontWeight.w900,
                                         color: Color(0xFF0f172a),
-                                        fontFamily: 'PlusJakartaSans',
                                       ),
                                       keyboardType: TextInputType.number,
+                                      inputFormatters: [
+                                        FilteringTextInputFormatter.digitsOnly,
+                                        LengthLimitingTextInputFormatter(3),
+                                      ],
                                       decoration: const InputDecoration(
                                         border: InputBorder.none,
                                         contentPadding: EdgeInsets.zero,
+                                        counterText: '',
                                       ),
-                                      onChanged: (value) {
-                                        final parsed = int.tryParse(value);
-                                        if (parsed != null && parsed > 0) {
-                                          setState(() {
-                                            _selectedScore = parsed;
-                                          });
-                                        }
-                                      },
+                                      onChanged: _validateAndUpdate,
+                                      onSubmitted: _validateAndUpdate,
                                     ),
-
                                     const SizedBox(height: 8),
-
-                                    // Indicador visual
                                     Container(
                                       height: 6,
                                       width: double.infinity,
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFFf97316).withOpacity(0.2),
+                                        color: const Color(
+                                          0xFFf97316,
+                                        ).withOpacity(0.2),
                                         borderRadius: BorderRadius.circular(3),
                                       ),
                                     ),
@@ -231,9 +245,8 @@ class _EditTargetPointsModalState extends State<EditTargetPointsModal> {
                                 ),
                               ),
 
-                              const SizedBox(width: 32),
+                              const SizedBox(width: 16),
 
-                              // Botón incremento
                               GestureDetector(
                                 onTap: _incrementScore,
                                 child: Container(
@@ -258,16 +271,15 @@ class _EditTargetPointsModalState extends State<EditTargetPointsModal> {
 
                           const SizedBox(height: 32),
 
-                          // Botones predefinidos
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                          /// BOTONES PRESET
+                          Wrap(
+                            spacing: 12,
+                            runSpacing: 8,
+                            alignment: WrapAlignment.center,
                             children: [
                               _buildPresetButton(50),
-                              const SizedBox(width: 12),
                               _buildPresetButton(100),
-                              const SizedBox(width: 12),
                               _buildPresetButton(150),
-                              const SizedBox(width: 12),
                               _buildPresetButton(200),
                             ],
                           ),
@@ -277,65 +289,55 @@ class _EditTargetPointsModalState extends State<EditTargetPointsModal> {
 
                     const SizedBox(height: 32),
 
-                    // Botones de acción
-                    Column(
-                      children: [
-                        // Botón principal
-                        GestureDetector(
-                          onTap: () {
-                            widget.onSave(_selectedScore);
-                          },
-                          child: Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(vertical: 18),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFf97316),
-                              borderRadius: BorderRadius.circular(20),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(0xFFf97316).withOpacity(0.15),
-                                  blurRadius: 12,
-                                  spreadRadius: 0,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
+                    GestureDetector(
+                      onTap: () {
+                        widget.onSave(_selectedScore);
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 18),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFf97316),
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFf97316).withOpacity(0.15),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
                             ),
-                            child: const Center(
-                              child: Text(
-                                'ESTABLECER LÍMITE',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.white,
-                                  letterSpacing: 0.5,
-                                  fontFamily: 'PlusJakartaSans',
-                                ),
-                              ),
+                          ],
+                        ),
+                        child: const Center(
+                          child: Text(
+                            'ESTABLECER LÍMITE',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                              letterSpacing: 0.5,
                             ),
                           ),
                         ),
+                      ),
+                    ),
 
-                        const SizedBox(height: 16),
+                    const SizedBox(height: 16),
 
-                        // Botón cancelar
-                        GestureDetector(
-                          onTap: widget.onCancel,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            child: const Center(
-                              child: Text(
-                                'Cancelar',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF94a3b8),
-                                  fontFamily: 'PlusJakartaSans',
-                                ),
-                              ),
+                    GestureDetector(
+                      onTap: widget.onCancel,
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        child: Center(
+                          child: Text(
+                            'Cancelar',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF94a3b8),
                             ),
                           ),
                         ),
-                      ],
+                      ),
                     ),
 
                     const SizedBox(height: 8),
@@ -361,7 +363,9 @@ class _EditTargetPointsModalState extends State<EditTargetPointsModal> {
           shape: BoxShape.circle,
           color: isSelected ? const Color(0xFFf97316) : Colors.white,
           border: Border.all(
-            color: isSelected ? const Color(0xFFf97316) : const Color(0xFFe2e8f0),
+            color: isSelected
+                ? const Color(0xFFf97316)
+                : const Color(0xFFe2e8f0),
             width: 2,
           ),
           boxShadow: isSelected
@@ -369,7 +373,6 @@ class _EditTargetPointsModalState extends State<EditTargetPointsModal> {
                   BoxShadow(
                     color: const Color(0xFFf97316).withOpacity(0.15),
                     blurRadius: 8,
-                    spreadRadius: 0,
                     offset: const Offset(0, 4),
                   ),
                 ]
@@ -382,7 +385,6 @@ class _EditTargetPointsModalState extends State<EditTargetPointsModal> {
               fontSize: 15,
               fontWeight: FontWeight.w900,
               color: isSelected ? Colors.white : const Color(0xFF64748b),
-              fontFamily: 'PlusJakartaSans',
             ),
           ),
         ),
