@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../../models/team_data.dart';
-import 'match_screen.dart'; // Añade esta importación
+import '../../../../services/partida_service.dart';
+import 'match_screen.dart';
 
 class EditMatchSettingsScreen extends StatefulWidget {
   final Map<String, dynamic> matchData;
@@ -13,66 +15,124 @@ class EditMatchSettingsScreen extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  _EditMatchSettingsScreenState createState() =>
+  State<EditMatchSettingsScreen> createState() =>
       _EditMatchSettingsScreenState();
 }
 
 class _EditMatchSettingsScreenState extends State<EditMatchSettingsScreen> {
-  late Map<String, TextEditingController> _playerControllers;
-  String _selectedCaptain = 'Juan';
+  // ── Colores idénticos al modal ──
+  static const Color primaryColor = Color(0xFFf97316);
+  static const Color primaryLight = Color(0xFFfff7ed);
+  static const Color primaryDark = Color(0xFFea580c);
+  static const Color charcoalColor = Color(0xFF0f172a);
+  static const Color slate100 = Color(0xFFf1f5f9);
+  static const Color slate200 = Color(0xFFe2e8f0);
+  static const Color slate300 = Color(0xFFcbd5e1);
+  static const Color slate400 = Color(0xFF94a3b8);
+  static const Color slate500 = Color(0xFF64748b);
+
+  late Map<String, TextEditingController> _controllers;
+  String? _selectedStarter;
+  bool _starterError = false;
 
   late TeamData _originalTeamData;
   late int _teamAWins;
   late int _teamBWins;
   late String _winningTeam;
 
-  static const Color primaryOrange = Color(0xFFF97316);
-  static const Color lightOrange = Color(0xFFFED7AA);
-  static const Color darkOrange = Color(0xFFEA580C);
+  final PartidaService _partidaService = PartidaService();
+  List<String> _jugadoresGuardados = [];
 
   @override
   void initState() {
     super.initState();
-
     _originalTeamData = widget.matchData['teamData'] as TeamData;
     _teamAWins = widget.matchData['teamAWins'] as int;
     _teamBWins = widget.matchData['teamBWins'] as int;
     _winningTeam = widget.matchData['winningTeam'] as String;
 
-    _playerControllers = {
+    _controllers = {
       'teamA1': TextEditingController(text: _originalTeamData.teamAPlayer1),
       'teamA2': TextEditingController(text: _originalTeamData.teamAPlayer2),
       'teamB1': TextEditingController(text: _originalTeamData.teamBPlayer1),
       'teamB2': TextEditingController(text: _originalTeamData.teamBPlayer2),
     };
 
-    _selectedCaptain = _originalTeamData.startingPlayerName;
+    // Igual que el modal: null al abrir, usuario debe tocar estrella
+    _selectedStarter = null;
+    _cargarJugadores();
+  }
+
+  Future<void> _cargarJugadores() async {
+    final jugadores = await _partidaService.getJugadores();
+    if (mounted) setState(() => _jugadoresGuardados = jugadores);
   }
 
   @override
   void dispose() {
-    _playerControllers.forEach((key, controller) => controller.dispose());
+    _controllers.forEach((_, c) => c.dispose());
     super.dispose();
   }
 
-  void _toggleCaptain(String playerKey) {
+  bool _isStarter(String key) =>
+      _selectedStarter != null && _selectedStarter == _controllers[key]!.text;
+
+  void _setStarter(String key) {
     setState(() {
-      _selectedCaptain = _playerControllers[playerKey]!.text;
+      _selectedStarter = _controllers[key]!.text;
+      _starterError = false;
     });
   }
 
-  bool _isCaptain(String playerName) {
-    return _selectedCaptain == playerName;
+  String _getStarterId(String name) {
+    for (final entry in _controllers.entries) {
+      if (entry.value.text == name) return entry.key;
+    }
+    return 'teamA1';
   }
 
-  void _saveAndNavigate(BuildContext context) {
+  void _save() {
+    final jugadoresActuales = _controllers.values
+        .map((c) => c.text.trim())
+        .toList();
+    final starterValido =
+        _selectedStarter != null &&
+        _selectedStarter!.trim().isNotEmpty &&
+        jugadoresActuales.contains(_selectedStarter!.trim());
+
+    if (!starterValido) {
+      setState(() => _starterError = true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.white, size: 18),
+              SizedBox(width: 8),
+              Text(
+                'Debes seleccionar quién sale',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+          backgroundColor: const Color(0xFFef4444),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
     final updatedTeamData = TeamData(
-      teamAPlayer1: _playerControllers['teamA1']!.text,
-      teamAPlayer2: _playerControllers['teamA2']!.text,
-      teamBPlayer1: _playerControllers['teamB1']!.text,
-      teamBPlayer2: _playerControllers['teamB2']!.text,
-      startingPlayerId: _getPlayerId(_selectedCaptain),
-      startingPlayerName: _selectedCaptain,
+      teamAPlayer1: _controllers['teamA1']!.text.trim(),
+      teamAPlayer2: _controllers['teamA2']!.text.trim(),
+      teamBPlayer1: _controllers['teamB1']!.text.trim(),
+      teamBPlayer2: _controllers['teamB2']!.text.trim(),
+      startingPlayerId: _getStarterId(_selectedStarter!),
+      startingPlayerName: _selectedStarter!,
     );
 
     final updatedMatchSummary = {
@@ -85,141 +145,142 @@ class _EditMatchSettingsScreenState extends State<EditMatchSettingsScreen> {
       'roundsPlayed': widget.matchData['roundsPlayed'] ?? 0,
     };
 
-    // Ejecuta el callback onSave primero
     widget.onSave(updatedMatchSummary);
 
-    // Luego navega a MatchScreen con los datos actualizados
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(
         builder: (context) => MatchScreen(teamData: updatedTeamData),
       ),
-      (route) => false, // Esto elimina todas las rutas anteriores
+      (route) => false,
     );
   }
 
-  String _getPlayerId(String playerName) {
-    if (playerName == _playerControllers['teamA1']!.text) return 'teamA1';
-    if (playerName == _playerControllers['teamA2']!.text) return 'teamA2';
-    if (playerName == _playerControllers['teamB1']!.text) return 'teamB1';
-    if (playerName == _playerControllers['teamB2']!.text) return 'teamB2';
-    return 'teamA1';
-  }
+  // ── BUILD ──────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: const Color(0xFFf8fafc),
       body: SafeArea(
         child: Column(
           children: [
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.8),
-                border: const Border(
-                  bottom: BorderSide(color: Color(0xFFF1F5F9), width: 1),
-                ),
-              ),
-              padding: const EdgeInsets.only(
-                left: 16,
-                right: 16,
-                top: 40,
-                bottom: 16,
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  TextButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
-                    style: TextButton.styleFrom(
-                      foregroundColor: primaryOrange,
-                      padding: EdgeInsets.zero,
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.chevron_left, size: 20),
-                        SizedBox(width: 2),
-                        Text(
-                          'Cancelar',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Text(
-                    'Ajustes de Partida',
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF0F172A),
-                    ),
-                  ),
-                  const SizedBox(width: 48),
-                ],
-              ),
-            ),
-
+            _buildHeader(),
             Expanded(
               child: SingleChildScrollView(
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildEditPlayersSection(),
-                    _buildGameTableSection(),
-                  ],
-                ),
-              ),
-            ),
+                    // ── Equipo A ──
+                    _sectionLabel('EQUIPO A', primaryColor),
+                    const SizedBox(height: 10),
+                    _teamCard(
+                      keys: ['teamA1', 'teamA2'],
+                      teamColor: primaryColor,
+                      bgColor: primaryLight,
+                      cardBg: Colors.white,
+                    ),
 
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.95),
-                border: const Border(
-                  top: BorderSide(color: Color(0xFFF1F5F9), width: 1),
-                ),
-              ),
-              child: Column(
-                children: [
-                  SizedBox(
-                    width: double.infinity,
-                    height: 56,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        _saveAndNavigate(context);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: primaryOrange,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        elevation: 2,
-                        shadowColor: primaryOrange.withOpacity(0.15),
-                      ),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.save, size: 20),
-                          SizedBox(width: 8),
-                          Text(
-                            'Guardar Cambios',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                    const SizedBox(height: 20),
+
+                    // ── Equipo B ──
+                    _sectionLabel('EQUIPO B', primaryDark),
+                    const SizedBox(height: 10),
+                    _teamCard(
+                      keys: ['teamB1', 'teamB2'],
+                      teamColor: primaryDark,
+                      bgColor: const Color(0xFFFFEDD5),
+                      cardBg: Colors.white,
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // ── Quién sale ──
+                    Row(
+                      children: [
+                        _sectionLabel('QUIÉN SALE', slate500),
+                        if (_starterError) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFef4444).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Text(
+                              'Requerido',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFFef4444),
+                              ),
                             ),
                           ),
                         ],
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Toca un jugador para marcarlo como salida',
+                      style: TextStyle(fontSize: 12, color: slate400),
+                    ),
+                    const SizedBox(height: 14),
+
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(14),
+                        border: _starterError
+                            ? Border.all(
+                                color: const Color(0xFFef4444),
+                                width: 1.5,
+                              )
+                            : null,
+                      ),
+                      child: _buildMesa(),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // ── Botón guardar ──
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _save,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: primaryColor,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          elevation: 2,
+                          shadowColor: primaryColor.withOpacity(0.3),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.check_circle_outline, size: 20),
+                            SizedBox(width: 8),
+                            Text(
+                              'Guardar y Continuar',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                ],
+                  ],
+                ),
               ),
             ),
           ],
@@ -228,101 +289,55 @@ class _EditMatchSettingsScreenState extends State<EditMatchSettingsScreen> {
     );
   }
 
-  Widget _buildEditPlayersSection() {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  // ── HEADER (como el del modal pero con Back en lugar de Cancelar) ──────────
+
+  Widget _buildHeader() {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: slate100, width: 1)),
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              const Icon(Icons.group, color: Color(0xFFF97316), size: 20),
-              const SizedBox(width: 8),
-              Text(
-                'EDITAR JUGADORES',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF94A3B8).withOpacity(0.8),
-                  letterSpacing: 2,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: lightOrange.withOpacity(0.5), width: 1),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            style: TextButton.styleFrom(
+              padding: EdgeInsets.zero,
+              minimumSize: Size.zero,
+              foregroundColor: slate400,
             ),
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
+                Icon(Icons.chevron_left, size: 20),
+                SizedBox(width: 2),
                 Text(
-                  'JUGADORES EQUIPO A',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    color: primaryOrange,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                _buildPlayerInput(
-                  controller: _playerControllers['teamA1']!,
-                  playerKey: 'teamA1',
-                  isTeamA: true,
-                ),
-                const SizedBox(height: 12),
-                _buildPlayerInput(
-                  controller: _playerControllers['teamA2']!,
-                  playerKey: 'teamA2',
-                  isTeamA: true,
+                  'Cancelar',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                 ),
               ],
             ),
           ),
-
-          const SizedBox(height: 16),
-
-          Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFEDD5).withOpacity(0.5),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: const Color(0xFFFDBA74).withOpacity(0.5),
-                width: 1,
-              ),
+          const Text(
+            'Siguiente Partida',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+              color: charcoalColor,
             ),
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'JUGADORES EQUIPO B',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    color: darkOrange,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                _buildPlayerInput(
-                  controller: _playerControllers['teamB1']!,
-                  playerKey: 'teamB1',
-                  isTeamA: false,
-                ),
-                const SizedBox(height: 12),
-                _buildPlayerInput(
-                  controller: _playerControllers['teamB2']!,
-                  playerKey: 'teamB2',
-                  isTeamA: false,
-                ),
-              ],
+          ),
+          TextButton(
+            onPressed: _save,
+            style: TextButton.styleFrom(
+              padding: EdgeInsets.zero,
+              minimumSize: Size.zero,
+              foregroundColor: primaryColor,
+            ),
+            child: const Text(
+              'Guardar',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
             ),
           ),
         ],
@@ -330,350 +345,393 @@ class _EditMatchSettingsScreenState extends State<EditMatchSettingsScreen> {
     );
   }
 
-  Widget _buildPlayerInput({
-    required TextEditingController controller,
-    required String playerKey,
-    required bool isTeamA,
+  // ── TEAM CARD ──────────────────────────────────────────────────────────────
+
+  Widget _teamCard({
+    required List<String> keys,
+    required Color teamColor,
+    required Color bgColor,
+    required Color cardBg,
   }) {
-    bool isCaptain = _isCaptain(controller.text);
+    return Container(
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: teamColor.withOpacity(0.15)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          _playerRow(
+            key: keys[0],
+            label: 'Jugador 1',
+            teamColor: teamColor,
+            bgColor: bgColor,
+          ),
+          const SizedBox(height: 12),
+          _playerRow(
+            key: keys[1],
+            label: 'Jugador 2',
+            teamColor: teamColor,
+            bgColor: bgColor,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── PLAYER ROW ─────────────────────────────────────────────────────────────
+
+  Widget _playerRow({
+    required String key,
+    required String label,
+    required Color teamColor,
+    required Color bgColor,
+  }) {
+    final isSelected = _isStarter(key);
+    final controller = _controllers[key]!;
 
     return Row(
       children: [
-        GestureDetector(
-          onTap: () => _toggleCaptain(playerKey),
-          child: Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: isCaptain ? primaryOrange : Colors.transparent,
-              border: Border.all(
-                color: isCaptain ? primaryOrange : const Color(0xFFE2E8F0),
-                width: 2,
+        // Avatar inicial
+        Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: bgColor,
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: isSelected ? teamColor : slate200,
+              width: isSelected ? 2 : 1,
+            ),
+          ),
+          child: Center(
+            child: Text(
+              controller.text.isNotEmpty
+                  ? controller.text[0].toUpperCase()
+                  : '?',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
+                color: teamColor,
               ),
             ),
-            child: isCaptain
-                ? const Icon(Icons.check, color: Colors.white, size: 18)
-                : null,
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 10),
 
+        // Autocomplete
         Expanded(
-          child: TextField(
-            controller: controller,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: isTeamA
-                  ? const Color(0xFFF8FAFC)
-                  : Colors.white.withOpacity(0.8),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide.none,
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 10,
-              ),
-              isDense: true,
-              suffixIcon: Icon(
-                Icons.edit,
-                size: 16,
-                color: const Color(0xFFCBD5E1),
-              ),
-            ),
-            onChanged: (value) {
-              if (isCaptain) {
-                setState(() {
-                  _selectedCaptain = value;
-                });
+          child: Autocomplete<String>(
+            initialValue: TextEditingValue(text: controller.text),
+            optionsBuilder: (TextEditingValue val) {
+              final query = val.text.toLowerCase();
+              if (query.isEmpty) return _jugadoresGuardados;
+              return _jugadoresGuardados.where(
+                (n) => n.toLowerCase().contains(query),
+              );
+            },
+            optionsMaxHeight: 160,
+            optionsViewBuilder: (context, onSelected, options) {
+              return Align(
+                alignment: Alignment.topLeft,
+                child: Material(
+                  elevation: 4,
+                  borderRadius: BorderRadius.circular(10),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 160),
+                    child: ListView.builder(
+                      padding: EdgeInsets.zero,
+                      shrinkWrap: true,
+                      itemCount: options.length,
+                      itemBuilder: (context, index) {
+                        final nombre = options.elementAt(index);
+                        return InkWell(
+                          onTap: () => onSelected(nombre),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.person, size: 16, color: teamColor),
+                                const SizedBox(width: 8),
+                                Text(
+                                  nombre,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              );
+            },
+            fieldViewBuilder:
+                (context, fieldController, focusNode, onSubmitted) {
+                  fieldController.text = controller.text;
+                  fieldController.addListener(() {
+                    final upper = fieldController.text.toUpperCase();
+                    if (fieldController.text != upper) {
+                      fieldController.value = fieldController.value.copyWith(
+                        text: upper,
+                        selection: TextSelection.collapsed(
+                          offset: upper.length,
+                        ),
+                      );
+                    }
+                    if (controller.text != fieldController.text) {
+                      controller.text = fieldController.text;
+                      setState(() {});
+                    }
+                  });
+                  return TextField(
+                    controller: fieldController,
+                    focusNode: focusNode,
+                    textCapitalization: TextCapitalization.characters,
+                    inputFormatters: [
+                      TextInputFormatter.withFunction((oldValue, newValue) {
+                        return newValue.copyWith(
+                          text: newValue.text.toUpperCase(),
+                        );
+                      }),
+                    ],
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    decoration: InputDecoration(
+                      labelText: label,
+                      labelStyle: TextStyle(fontSize: 12, color: slate400),
+                      filled: true,
+                      fillColor: const Color(0xFFf8fafc),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: teamColor, width: 1.5),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      isDense: true,
+                      suffixIcon: _jugadoresGuardados.isNotEmpty
+                          ? Icon(
+                              Icons.arrow_drop_down,
+                              size: 18,
+                              color: slate300,
+                            )
+                          : null,
+                    ),
+                  );
+                },
+            onSelected: (nombre) {
+              controller.text = nombre.toUpperCase();
+              if (_isStarter(key)) {
+                setState(() => _selectedStarter = nombre.toUpperCase());
+              } else {
+                setState(() {});
               }
             },
+          ),
+        ),
+        const SizedBox(width: 10),
+
+        // Estrella de salida
+        GestureDetector(
+          onTap: () => _setStarter(key),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: isSelected ? teamColor : slate100,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              isSelected ? Icons.star : Icons.star_border,
+              size: 18,
+              color: isSelected ? Colors.white : slate400,
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildGameTableSection() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  // ── SECTION LABEL ──────────────────────────────────────────────────────────
+
+  Widget _sectionLabel(String text, Color color) {
+    return Row(
+      children: [
+        Container(
+          width: 3,
+          height: 14,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          text,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w900,
+            color: color,
+            letterSpacing: 1.5,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── MESA ───────────────────────────────────────────────────────────────────
+
+  Widget _buildMesa() {
+    return Container(
+      height: 260,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: slate100),
+      ),
+      child: Stack(
         children: [
-          Row(
-            children: [
-              const Icon(Icons.table_chart, color: Color(0xFFF97316), size: 20),
-              const SizedBox(width: 8),
-              Text(
-                'MESA DE JUEGO',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF94A3B8).withOpacity(0.8),
-                  letterSpacing: 2,
-                ),
+          Center(
+            child: Container(
+              width: 90,
+              height: 90,
+              decoration: BoxDecoration(
+                color: slate100,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: slate200),
               ),
-            ],
-          ),
-          const SizedBox(height: 24),
-
-          const Center(
-            child: Text(
-              'Toca un jugador en la mesa para establecer quién empieza',
-              style: TextStyle(fontSize: 12, color: Color(0xFFCBD5E1)),
+              child: const Center(
+                child: Icon(Icons.casino, size: 28, color: slate300),
+              ),
             ),
           ),
-          const SizedBox(height: 24),
-
-          SizedBox(
-            width: double.infinity,
-            height: 380,
-            child: Stack(
-              children: [
-                Center(
-                  child: Container(
-                    width: 176,
-                    height: 176,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border.all(color: const Color(0xFFF1F5F9)),
-                      borderRadius: BorderRadius.circular(24),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 25,
-                          offset: const Offset(0, 10),
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF8FAFC),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(
-                          Icons.casino,
-                          size: 36,
-                          color: Color(0xFFE2E8F0),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-
-                Positioned(
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  child: Align(
-                    alignment: Alignment.bottomCenter,
-                    child: _buildPlayerSeat(
-                      name: _playerControllers['teamA1']!.text,
-                      initial: _playerControllers['teamA1']!.text.isNotEmpty
-                          ? _playerControllers['teamA1']!.text[0]
-                          : 'J',
-                      playerKey: 'teamA1',
-                      team: 'Equipo A',
-                      teamColor: primaryOrange,
-                      bgColor: const Color(0xFFF8FAFC),
-                      iconColor: lightOrange,
-                      isTop: false,
-                    ),
-                  ),
-                ),
-
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  child: Align(
-                    alignment: Alignment.topCenter,
-                    child: _buildPlayerSeat(
-                      name: _playerControllers['teamA2']!.text,
-                      initial: _playerControllers['teamA2']!.text.isNotEmpty
-                          ? _playerControllers['teamA2']!.text[0]
-                          : 'P',
-                      playerKey: 'teamA2',
-                      team: 'Equipo A',
-                      teamColor: primaryOrange,
-                      bgColor: const Color(0xFFF8FAFC),
-                      iconColor: lightOrange,
-                      isTop: true,
-                    ),
-                  ),
-                ),
-
-                Positioned(
-                  right: 0,
-                  top: 0,
-                  bottom: 0,
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: _buildPlayerSeat(
-                      name: _playerControllers['teamB2']!.text,
-                      initial: _playerControllers['teamB2']!.text.isNotEmpty
-                          ? _playerControllers['teamB2']!.text[0]
-                          : 'T',
-                      playerKey: 'teamB2',
-                      team: 'Equipo B',
-                      teamColor: darkOrange,
-                      bgColor: const Color(0xFFFFEDD5),
-                      iconColor: const Color(0xFFFDBA74),
-                      isTop: false,
-                    ),
-                  ),
-                ),
-
-                Positioned(
-                  left: 0,
-                  top: 0,
-                  bottom: 0,
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: _buildPlayerSeat(
-                      name: _playerControllers['teamB1']!.text,
-                      initial: _playerControllers['teamB1']!.text.isNotEmpty
-                          ? _playerControllers['teamB1']!.text[0]
-                          : 'A',
-                      playerKey: 'teamB1',
-                      team: 'Equipo B',
-                      teamColor: darkOrange,
-                      bgColor: const Color(0xFFFFEDD5),
-                      iconColor: const Color(0xFFFDBA74),
-                      isTop: false,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+          Positioned(
+            top: 14,
+            left: 0,
+            right: 0,
+            child: Center(child: _mesaSeat('teamA2', primaryColor)),
+          ),
+          Positioned(
+            bottom: 14,
+            left: 0,
+            right: 0,
+            child: Center(child: _mesaSeat('teamA1', primaryColor)),
+          ),
+          Positioned(
+            left: 14,
+            top: 0,
+            bottom: 0,
+            child: Center(child: _mesaSeat('teamB2', primaryDark)),
+          ),
+          Positioned(
+            right: 14,
+            top: 0,
+            bottom: 0,
+            child: Center(child: _mesaSeat('teamB1', primaryDark)),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildPlayerSeat({
-    required String name,
-    required String initial,
-    required String playerKey,
-    required String team,
-    required Color teamColor,
-    required Color bgColor,
-    required Color iconColor,
-    bool isTop = false,
-  }) {
-    final isSelected = _isCaptain(name);
+  Widget _mesaSeat(String key, Color teamColor) {
+    final isSelected = _isStarter(key);
+    final name = _controllers[key]!.text;
+    final inicial = name.isNotEmpty ? name[0].toUpperCase() : '?';
 
     return GestureDetector(
-      onTap: () => _toggleCaptain(playerKey),
-      child: Container(
-        width: 128,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (isTop) ...[
-              Text(
-                team.toUpperCase(),
-                style: TextStyle(
-                  fontSize: 9,
-                  fontWeight: FontWeight.bold,
-                  color: teamColor,
-                  letterSpacing: -0.5,
+      onTap: () => _setStarter(key),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: isSelected ? teamColor.withOpacity(0.12) : slate100,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: isSelected ? teamColor : slate200,
+                    width: isSelected ? 2.5 : 1,
+                  ),
+                  boxShadow: isSelected
+                      ? [
+                          BoxShadow(
+                            color: teamColor.withOpacity(0.25),
+                            blurRadius: 12,
+                          ),
+                        ]
+                      : null,
+                ),
+                child: Center(
+                  child: Text(
+                    inicial,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: isSelected ? teamColor : slate400,
+                    ),
+                  ),
                 ),
               ),
-              const SizedBox(height: 4),
-            ],
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    color: bgColor,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: isSelected ? primaryOrange : iconColor,
-                      width: 2,
-                    ),
-                    boxShadow: isSelected
-                        ? [
-                            BoxShadow(
-                              color: primaryOrange.withOpacity(0.4),
-                              blurRadius: 20,
-                            ),
-                          ]
-                        : [],
-                  ),
-                  child: Icon(Icons.account_circle, size: 40, color: iconColor),
-                ),
+              if (isSelected)
                 Positioned(
                   top: -4,
                   right: -4,
-                  child: AnimatedScale(
-                    scale: isSelected ? 1.0 : 0.5,
-                    duration: const Duration(milliseconds: 300),
-                    child: AnimatedOpacity(
-                      opacity: isSelected ? 1.0 : 0.0,
-                      duration: const Duration(milliseconds: 300),
-                      child: Container(
-                        width: 24,
-                        height: 24,
-                        decoration: BoxDecoration(
-                          color: primaryOrange,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 4,
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.star,
-                          size: 14,
-                          color: Colors.white,
-                        ),
-                      ),
+                  child: Container(
+                    width: 18,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      color: teamColor,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.star,
+                      size: 11,
+                      color: Colors.white,
                     ),
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  name,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                    color: isSelected ? primaryOrange : const Color(0xFF475569),
-                  ),
-                ),
-                const SizedBox(width: 4),
-                const Icon(Icons.edit, size: 14, color: Color(0xFFCBD5E1)),
-              ],
-            ),
-            if (!isTop) ...[
-              const SizedBox(height: 2),
-              Text(
-                team.toUpperCase(),
-                style: TextStyle(
-                  fontSize: 9,
-                  fontWeight: FontWeight.bold,
-                  color: teamColor,
-                  letterSpacing: -0.5,
-                ),
-              ),
             ],
-          ],
-        ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            name.isEmpty ? '—' : name,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
+              color: isSelected ? teamColor : slate500,
+            ),
+          ),
+        ],
       ),
     );
   }

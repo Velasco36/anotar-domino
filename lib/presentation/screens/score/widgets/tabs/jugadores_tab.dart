@@ -15,11 +15,12 @@ class _JugadoresTabState extends State<JugadoresTab>
   bool get wantKeepAlive => true;
 
   static const Color primaryColor = Color(0xFFf97316);
-  static const Color primaryLightColor = Color(0xFFfff7ed);
+  static const Color primaryLight = Color(0xFFfff7ed);
   static const Color charcoalColor = Color(0xFF0f172a);
   static const Color slate100 = Color(0xFFf1f5f9);
   static const Color slate200 = Color(0xFFe2e8f0);
   static const Color slate400 = Color(0xFF94a3b8);
+  static const Color slate500 = Color(0xFF64748b);
 
   String _searchQuery = '';
   List<String> _todosLosJugadores = [];
@@ -50,6 +51,105 @@ class _JugadoresTabState extends State<JugadoresTab>
       }
     } catch (_) {
       setState(() => _loading = false);
+    }
+  }
+
+  // ✅ Eliminar jugador de Firestore
+  Future<void> _eliminarJugador(String nombre) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Eliminar jugador',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w900,
+            color: charcoalColor,
+          ),
+        ),
+        content: Text(
+          '¿Eliminar a "$nombre" de la lista? Sus partidas no se verán afectadas.',
+          style: TextStyle(fontSize: 13, color: slate500),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        actions: [
+          Row(
+            children: [
+              Expanded(
+                child: TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  style: TextButton.styleFrom(
+                    backgroundColor: slate100,
+                    foregroundColor: slate500,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Text(
+                    'Cancelar',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: TextButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  style: TextButton.styleFrom(
+                    backgroundColor: const Color(0xFFef4444),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Text(
+                    'Eliminar',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      setState(() => _todosLosJugadores.remove(nombre));
+      await FirebaseFirestore.instance.collection('jugadores').doc(uid).update({
+        'nombres': _todosLosJugadores,
+      });
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.check_circle_outline, color: Colors.white, size: 18),
+                SizedBox(width: 8),
+                Text(
+                  'Jugador eliminado',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFF22c55e),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
     }
   }
 
@@ -92,13 +192,14 @@ class _JugadoresTabState extends State<JugadoresTab>
                 ),
               ),
               const SizedBox(width: 10),
+              // Contador de jugadores
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 14,
                   vertical: 10,
                 ),
                 decoration: BoxDecoration(
-                  color: primaryLightColor,
+                  color: primaryLight,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -129,7 +230,7 @@ class _JugadoresTabState extends State<JugadoresTab>
                     padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
                     itemCount: filtrados.length,
                     itemBuilder: (context, index) =>
-                        _buildJugadorCard(filtrados[index], index),
+                        _buildJugadorCard(filtrados[index]),
                   ),
                 ),
         ),
@@ -137,80 +238,125 @@ class _JugadoresTabState extends State<JugadoresTab>
     );
   }
 
-  Widget _buildJugadorCard(String nombre, int index) {
-    final colores = [
-      primaryColor,
-      const Color(0xFF3B82F6),
-      const Color(0xFF10B981),
-      const Color(0xFF8B5CF6),
-      const Color(0xFFEF4444),
-    ];
-    final colorAvatar = colores[index % colores.length];
+  Widget _buildJugadorCard(String nombre) {
     final inicial = nombre.isNotEmpty ? nombre[0].toUpperCase() : '?';
 
-    return GestureDetector(
-      onTap: () => _mostrarDetalle(nombre),
-      child: Container(
+    // ✅ Swipe para eliminar
+    return Dismissible(
+      key: Key(nombre),
+      direction: DismissDirection.endToStart,
+      confirmDismiss: (_) async {
+        await _eliminarJugador(nombre);
+        return false;
+      },
+      background: Container(
         margin: const EdgeInsets.only(bottom: 10),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: const Color(0xFFef4444),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: slate100),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+        ),
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        child: const Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.delete_outline, color: Colors.white, size: 22),
+            SizedBox(height: 4),
+            Text(
+              'Eliminar',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ],
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            children: [
-              // Avatar
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: colorAvatar.withOpacity(0.15),
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Text(
-                    inicial,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                      color: colorAvatar,
+      ),
+      child: GestureDetector(
+        onTap: () => _mostrarDetalle(nombre),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: slate100),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                // ✅ Avatar solo en primaryColor
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: primaryColor.withOpacity(0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Text(
+                      inicial,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        color: primaryColor,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 14),
+                const SizedBox(width: 14),
 
-              // Nombre
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      nombre,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                        color: charcoalColor,
+                // Nombre
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        nombre,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: charcoalColor,
+                        ),
                       ),
-                    ),
-                    Text(
-                      'Toca para ver estadísticas',
-                      style: TextStyle(fontSize: 11, color: slate400),
-                    ),
-                  ],
+                      Text(
+                        'Toca para ver estadísticas',
+                        style: TextStyle(fontSize: 11, color: slate400),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              Icon(Icons.arrow_forward_ios, size: 14, color: slate400),
-            ],
+
+                // ✅ Botón eliminar visible en la card
+                GestureDetector(
+                  onTap: () => _eliminarJugador(nombre),
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    margin: const EdgeInsets.only(right: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFef4444).withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.delete_outline,
+                      size: 16,
+                      color: Color(0xFFef4444),
+                    ),
+                  ),
+                ),
+
+                Icon(Icons.arrow_forward_ios, size: 14, color: slate400),
+              ],
+            ),
           ),
         ),
       ),
@@ -258,7 +404,7 @@ class _JugadoresTabState extends State<JugadoresTab>
 }
 
 // ══════════════════════════════════════════════════════════════
-// BOTTOM SHEET — detalle del jugador (exportado para reutilizar)
+// BOTTOM SHEET — detalle del jugador
 // ══════════════════════════════════════════════════════════════
 class JugadorDetalleSheet extends StatefulWidget {
   final String nombre;
@@ -272,6 +418,7 @@ class _JugadorDetalleSheetState extends State<JugadorDetalleSheet> {
   static const Color primaryColor = Color(0xFFf97316);
   static const Color charcoalColor = Color(0xFF0f172a);
   static const Color slate100 = Color(0xFFf1f5f9);
+  static const Color slate200 = Color(0xFFe2e8f0);
   static const Color slate400 = Color(0xFF94a3b8);
 
   Map<String, dynamic>? _stats;
@@ -345,7 +492,7 @@ class _JugadorDetalleSheetState extends State<JugadorDetalleSheet> {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: slate100,
+              color: slate200,
               borderRadius: BorderRadius.circular(2),
             ),
           ),

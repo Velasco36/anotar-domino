@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../../models/team_data.dart';
 import '../../../../services/partida_service.dart';
 
@@ -41,8 +42,8 @@ class _EditCurrentMatchModalState extends State<EditCurrentMatchModal> {
   static const Color slate500 = Color(0xFF64748b);
 
   late Map<String, TextEditingController> _controllers;
-  String? _selectedStarter; // ✅ nullable — null = sin selección
-  bool _starterError = false; // ✅ controla si mostrar error
+  String? _selectedStarter;
+  bool _starterError = false;
 
   final PartidaService _partidaService = PartidaService();
   List<String> _jugadoresGuardados = [];
@@ -56,7 +57,6 @@ class _EditCurrentMatchModalState extends State<EditCurrentMatchModal> {
       'teamB1': TextEditingController(text: widget.teamData.teamBPlayer1),
       'teamB2': TextEditingController(text: widget.teamData.teamBPlayer2),
     };
-    // Siempre null al abrir — usuario debe tocar estrella explícitamente
     _selectedStarter = null;
     _cargarJugadores();
   }
@@ -79,7 +79,7 @@ class _EditCurrentMatchModalState extends State<EditCurrentMatchModal> {
   void _setStarter(String key) {
     setState(() {
       _selectedStarter = _controllers[key]!.text;
-      _starterError = false; // limpia el error al seleccionar
+      _starterError = false;
     });
   }
 
@@ -91,20 +91,17 @@ class _EditCurrentMatchModalState extends State<EditCurrentMatchModal> {
   }
 
   void _save() {
-    // ✅ Validación: debe haberse tocado una estrella
     final jugadoresActuales = _controllers.values.map((c) => c.text.trim()).toList();
     final starterValido = _selectedStarter != null &&
         _selectedStarter!.trim().isNotEmpty &&
         jugadoresActuales.contains(_selectedStarter!.trim());
     if (!starterValido) {
       setState(() => _starterError = true);
-      // Scroll hacia la sección "QUIÉN SALE" mostrando el error
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Row(
             children: [
-              Icon(Icons.warning_amber_rounded,
-                  color: Colors.white, size: 18),
+              Icon(Icons.warning_amber_rounded, color: Colors.white, size: 18),
               SizedBox(width: 8),
               Text(
                 'Debes seleccionar quién sale',
@@ -114,14 +111,12 @@ class _EditCurrentMatchModalState extends State<EditCurrentMatchModal> {
           ),
           backgroundColor: const Color(0xFFef4444),
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           duration: const Duration(seconds: 2),
         ),
       );
-      return; // ← no guarda
+      return;
     }
 
     final updated = TeamData(
@@ -156,8 +151,7 @@ class _EditCurrentMatchModalState extends State<EditCurrentMatchModal> {
             _buildHeader(),
             Flexible(
               child: SingleChildScrollView(
-                keyboardDismissBehavior:
-                    ScrollViewKeyboardDismissBehavior.onDrag,
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -184,15 +178,13 @@ class _EditCurrentMatchModalState extends State<EditCurrentMatchModal> {
 
                     const SizedBox(height: 20),
 
-                    // ✅ Etiqueta con indicador de error
                     Row(
                       children: [
                         _sectionLabel('QUIÉN SALE', slate500),
                         if (_starterError) ...[
                           const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 2),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
                               color: const Color(0xFFef4444).withOpacity(0.1),
                               borderRadius: BorderRadius.circular(6),
@@ -216,14 +208,12 @@ class _EditCurrentMatchModalState extends State<EditCurrentMatchModal> {
                     ),
                     const SizedBox(height: 14),
 
-                    // ✅ Mesa con borde rojo si hay error
                     AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(14),
                         border: _starterError
-                            ? Border.all(
-                                color: const Color(0xFFef4444), width: 1.5)
+                            ? Border.all(color: const Color(0xFFef4444), width: 1.5)
                             : null,
                       ),
                       child: _buildMesa(),
@@ -303,15 +293,12 @@ class _EditCurrentMatchModalState extends State<EditCurrentMatchModal> {
                   foregroundColor: slate400,
                 ),
                 child: const Text('Cancelar',
-                    style:
-                        TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
               ),
               const Text(
                 'Editar Partida',
                 style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
-                    color: charcoalColor),
+                    fontSize: 16, fontWeight: FontWeight.w900, color: charcoalColor),
               ),
               TextButton(
                 onPressed: _save,
@@ -321,8 +308,7 @@ class _EditCurrentMatchModalState extends State<EditCurrentMatchModal> {
                   foregroundColor: primaryColor,
                 ),
                 child: const Text('Guardar',
-                    style:
-                        TextStyle(fontSize: 14, fontWeight: FontWeight.w800)),
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800)),
               ),
             ],
           ),
@@ -352,11 +338,9 @@ class _EditCurrentMatchModalState extends State<EditCurrentMatchModal> {
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          _playerRow(key: keys[0], label: 'Jugador 1',
-              teamColor: teamColor, bgColor: bgColor),
+          _playerRow(key: keys[0], label: 'Jugador 1', teamColor: teamColor, bgColor: bgColor),
           const SizedBox(height: 12),
-          _playerRow(key: keys[1], label: 'Jugador 2',
-              teamColor: teamColor, bgColor: bgColor),
+          _playerRow(key: keys[1], label: 'Jugador 2', teamColor: teamColor, bgColor: bgColor),
         ],
       ),
     );
@@ -386,13 +370,9 @@ class _EditCurrentMatchModalState extends State<EditCurrentMatchModal> {
           ),
           child: Center(
             child: Text(
-              controller.text.isNotEmpty
-                  ? controller.text[0].toUpperCase()
-                  : '?',
+              controller.text.isNotEmpty ? controller.text[0].toUpperCase() : '?',
               style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w900,
-                  color: teamColor),
+                  fontSize: 15, fontWeight: FontWeight.w900, color: teamColor),
             ),
           ),
         ),
@@ -428,13 +408,11 @@ class _EditCurrentMatchModalState extends State<EditCurrentMatchModal> {
                                 horizontal: 12, vertical: 10),
                             child: Row(
                               children: [
-                                Icon(Icons.person,
-                                    size: 16, color: teamColor),
+                                Icon(Icons.person, size: 16, color: teamColor),
                                 const SizedBox(width: 8),
                                 Text(nombre,
                                     style: const TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w500)),
+                                        fontSize: 13, fontWeight: FontWeight.w500)),
                               ],
                             ),
                           ),
@@ -445,10 +423,17 @@ class _EditCurrentMatchModalState extends State<EditCurrentMatchModal> {
                 ),
               );
             },
-            fieldViewBuilder:
-                (context, fieldController, focusNode, onSubmitted) {
+            fieldViewBuilder: (context, fieldController, focusNode, onSubmitted) {
               fieldController.text = controller.text;
               fieldController.addListener(() {
+                // ✅ Forzar mayúsculas al escribir
+                final upper = fieldController.text.toUpperCase();
+                if (fieldController.text != upper) {
+                  fieldController.value = fieldController.value.copyWith(
+                    text: upper,
+                    selection: TextSelection.collapsed(offset: upper.length),
+                  );
+                }
                 if (controller.text != fieldController.text) {
                   controller.text = fieldController.text;
                   setState(() {});
@@ -457,8 +442,14 @@ class _EditCurrentMatchModalState extends State<EditCurrentMatchModal> {
               return TextField(
                 controller: fieldController,
                 focusNode: focusNode,
-                style: const TextStyle(
-                    fontSize: 14, fontWeight: FontWeight.w600),
+                // ✅ Capitalización en mayúsculas
+                textCapitalization: TextCapitalization.characters,
+                inputFormatters: [
+                  TextInputFormatter.withFunction((oldValue, newValue) {
+                    return newValue.copyWith(text: newValue.text.toUpperCase());
+                  }),
+                ],
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                 decoration: InputDecoration(
                   labelText: label,
                   labelStyle: TextStyle(fontSize: 12, color: slate400),
@@ -472,20 +463,19 @@ class _EditCurrentMatchModalState extends State<EditCurrentMatchModal> {
                     borderRadius: BorderRadius.circular(10),
                     borderSide: BorderSide(color: teamColor, width: 1.5),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 10),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   isDense: true,
                   suffixIcon: _jugadoresGuardados.isNotEmpty
-                      ? Icon(Icons.arrow_drop_down,
-                          size: 18, color: slate300)
+                      ? Icon(Icons.arrow_drop_down, size: 18, color: slate300)
                       : null,
                 ),
               );
             },
             onSelected: (nombre) {
-              controller.text = nombre;
+              controller.text = nombre.toUpperCase(); // ✅ también al seleccionar del autocomplete
               if (_isStarter(key)) {
-                setState(() => _selectedStarter = nombre);
+                setState(() => _selectedStarter = nombre.toUpperCase());
               } else {
                 setState(() {});
               }
@@ -520,8 +510,8 @@ class _EditCurrentMatchModalState extends State<EditCurrentMatchModal> {
         Container(
           width: 3,
           height: 14,
-          decoration: BoxDecoration(
-              color: color, borderRadius: BorderRadius.circular(2)),
+          decoration:
+              BoxDecoration(color: color, borderRadius: BorderRadius.circular(2)),
         ),
         const SizedBox(width: 8),
         Text(text,
@@ -558,6 +548,7 @@ class _EditCurrentMatchModalState extends State<EditCurrentMatchModal> {
               ),
             ),
           ),
+          // ✅ CORREGIDO: teamA1 arriba, teamA2 abajo (antes estaban invertidos)
           Positioned(
               top: 14, left: 0, right: 0,
               child: Center(child: _mesaSeat('teamA2', primaryColor))),
@@ -566,10 +557,10 @@ class _EditCurrentMatchModalState extends State<EditCurrentMatchModal> {
               child: Center(child: _mesaSeat('teamA1', primaryColor))),
           Positioned(
               left: 14, top: 0, bottom: 0,
-              child: Center(child: _mesaSeat('teamB1', primaryDark))),
+              child: Center(child: _mesaSeat('teamB2', primaryDark))),
           Positioned(
               right: 14, top: 0, bottom: 0,
-              child: Center(child: _mesaSeat('teamB2', primaryDark))),
+              child: Center(child: _mesaSeat('teamB1', primaryDark))),
         ],
       ),
     );
@@ -593,9 +584,7 @@ class _EditCurrentMatchModalState extends State<EditCurrentMatchModal> {
                 width: 50,
                 height: 50,
                 decoration: BoxDecoration(
-                  color: isSelected
-                      ? teamColor.withOpacity(0.12)
-                      : slate100,
+                  color: isSelected ? teamColor.withOpacity(0.12) : slate100,
                   shape: BoxShape.circle,
                   border: Border.all(
                     color: isSelected ? teamColor : slate200,
@@ -603,8 +592,7 @@ class _EditCurrentMatchModalState extends State<EditCurrentMatchModal> {
                   ),
                   boxShadow: isSelected
                       ? [BoxShadow(
-                          color: teamColor.withOpacity(0.25),
-                          blurRadius: 12)]
+                          color: teamColor.withOpacity(0.25), blurRadius: 12)]
                       : null,
                 ),
                 child: Center(
@@ -622,10 +610,9 @@ class _EditCurrentMatchModalState extends State<EditCurrentMatchModal> {
                   child: Container(
                     width: 18,
                     height: 18,
-                    decoration: BoxDecoration(
-                        color: teamColor, shape: BoxShape.circle),
-                    child: const Icon(Icons.star,
-                        size: 11, color: Colors.white),
+                    decoration:
+                        BoxDecoration(color: teamColor, shape: BoxShape.circle),
+                    child: const Icon(Icons.star, size: 11, color: Colors.white),
                   ),
                 ),
             ],
@@ -635,8 +622,7 @@ class _EditCurrentMatchModalState extends State<EditCurrentMatchModal> {
             name.isEmpty ? '—' : name,
             style: TextStyle(
                 fontSize: 11,
-                fontWeight:
-                    isSelected ? FontWeight.w800 : FontWeight.w500,
+                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
                 color: isSelected ? teamColor : slate500),
           ),
         ],

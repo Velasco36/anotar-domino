@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../../services/partida_service.dart';
 
 class RankingTab extends StatefulWidget {
@@ -22,6 +23,39 @@ class _RankingTabState extends State<RankingTab>
   static const Color slate100 = Color(0xFFf1f5f9);
   static const Color slate400 = Color(0xFF94a3b8);
   static const Color slate500 = Color(0xFF64748b);
+
+  // ✅ Calcula el ranking individual desde los docs del stream
+  Map<String, int> _calcularRankingIndividual(
+    List<QueryDocumentSnapshot> docs,
+  ) {
+    final Map<String, int> victorias = {};
+    for (final doc in docs) {
+      final data = doc.data() as Map<String, dynamic>;
+      final ganador = data['ganador'] as String;
+      final List<String> ganadores = ganador == 'equipoA'
+          ? List<String>.from(data['equipoA'] ?? [])
+          : List<String>.from(data['equipoB'] ?? []);
+      for (final jugador in ganadores) {
+        victorias[jugador] = (victorias[jugador] ?? 0) + 1;
+      }
+    }
+    return victorias;
+  }
+
+  // ✅ Calcula el ranking grupal desde los docs del stream
+  Map<String, int> _calcularRankingGrupal(List<QueryDocumentSnapshot> docs) {
+    final Map<String, int> victorias = {};
+    for (final doc in docs) {
+      final data = doc.data() as Map<String, dynamic>;
+      final ganador = data['ganador'] as String;
+      final List<String> equipo = ganador == 'equipoA'
+          ? List<String>.from(data['equipoA'] ?? [])
+          : List<String>.from(data['equipoB'] ?? []);
+      final nombreEquipo = equipo.join(' & ');
+      victorias[nombreEquipo] = (victorias[nombreEquipo] ?? 0) + 1;
+    }
+    return victorias;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,12 +81,10 @@ class _RankingTabState extends State<RankingTab>
           ),
         ),
 
-        // ─── Lista ranking ───
+        // ✅ StreamBuilder — reacciona automáticamente a cambios en el historial
         Expanded(
-          child: FutureBuilder<Map<String, int>>(
-            future: _vista == 'individual'
-                ? _partidaService.getRanking()
-                : _partidaService.getRankingGrupal(),
+          child: StreamBuilder<QuerySnapshot>(
+            stream: _partidaService.getHistorial(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(
@@ -60,11 +92,19 @@ class _RankingTabState extends State<RankingTab>
                 );
               }
 
-              if (!snapshot.hasData || snapshot.data!.isEmpty) {
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                 return _buildEmpty();
               }
 
-              final ranking = snapshot.data!.entries.toList()
+              final docs = snapshot.data!.docs;
+
+              final rankingMap = _vista == 'individual'
+                  ? _calcularRankingIndividual(docs)
+                  : _calcularRankingGrupal(docs);
+
+              if (rankingMap.isEmpty) return _buildEmpty();
+
+              final ranking = rankingMap.entries.toList()
                 ..sort((a, b) => b.value.compareTo(a.value));
 
               return ListView.builder(

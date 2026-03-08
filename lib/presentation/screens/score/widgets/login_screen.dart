@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import './../../../../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -8,7 +9,8 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStateMixin {
+class _LoginScreenState extends State<LoginScreen>
+    with SingleTickerProviderStateMixin {
   final _auth = AuthService();
   bool _loading = false;
   late AnimationController _controller;
@@ -18,10 +20,15 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 900));
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
     _fadeAnim = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
-    _slideAnim = Tween<Offset>(begin: const Offset(0, 0.15), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+    _slideAnim = Tween<Offset>(
+      begin: const Offset(0, 0.15),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
     _controller.forward();
   }
 
@@ -53,7 +60,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         children: [
           // Fondo degradado sutil
           Positioned(
-            top: 0, left: 0, right: 0,
+            top: 0,
+            left: 0,
+            right: 0,
             child: Container(
               height: 300,
               decoration: BoxDecoration(
@@ -71,7 +80,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
           // Línea degradada inferior
           Positioned(
-            bottom: 0, left: 0, right: 0,
+            bottom: 0,
+            left: 0,
+            right: 0,
             child: Container(
               height: 3,
               decoration: const BoxDecoration(
@@ -129,7 +140,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                   borderRadius: BorderRadius.circular(12),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: const Color(0xFFF49D25).withOpacity(0.4),
+                                      color: const Color(
+                                        0xFFF49D25,
+                                      ).withOpacity(0.4),
                                       blurRadius: 12,
                                       offset: const Offset(0, 4),
                                     ),
@@ -137,26 +150,36 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                 ),
                                 child: Stack(
                                   children: [
-                                    // Puntos superiores
-                                    Positioned(top: 10, left: 10,
-                                      child: _dot()),
-                                    Positioned(top: 10, right: 10,
-                                      child: _dot()),
-                                    // Línea divisoria
+                                    Positioned(
+                                      top: 10,
+                                      left: 10,
+                                      child: _dot(),
+                                    ),
+                                    Positioned(
+                                      top: 10,
+                                      right: 10,
+                                      child: _dot(),
+                                    ),
                                     Center(
                                       child: Container(
                                         height: 1.5,
-                                        margin: const EdgeInsets.symmetric(horizontal: 8),
+                                        margin: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                        ),
                                         color: Colors.white.withOpacity(0.3),
                                       ),
                                     ),
-                                    // Punto central
                                     Center(child: _dot()),
-                                    // Puntos inferiores
-                                    Positioned(bottom: 10, left: 10,
-                                      child: _dot()),
-                                    Positioned(bottom: 10, right: 10,
-                                      child: _dot()),
+                                    Positioned(
+                                      bottom: 10,
+                                      left: 10,
+                                      child: _dot(),
+                                    ),
+                                    Positioned(
+                                      bottom: 10,
+                                      right: 10,
+                                      child: _dot(),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -166,7 +189,6 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
                         const SizedBox(height: 36),
 
-                        // Título
                         const Text(
                           'Bienvenido a',
                           textAlign: TextAlign.center,
@@ -177,8 +199,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                             height: 1.2,
                           ),
                         ),
-                          const Text(
-                          ' Domino Score',
+                        const Text(
+                          'Domino Score',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 28,
@@ -190,7 +212,6 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
                         const SizedBox(height: 12),
 
-                        // Subtítulo
                         const Text(
                           'La forma más fácil y moderna de llevar el control de tus partidas de dominó.',
                           textAlign: TextAlign.center,
@@ -203,7 +224,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
                         const SizedBox(height: 56),
 
-                        // Botón Google
+                        // ── Botón Google ──
                         _loading
                             ? const CircularProgressIndicator(
                                 color: Color(0xFFF49D25),
@@ -215,7 +236,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                   onPressed: _loginGoogle,
                                   style: OutlinedButton.styleFrom(
                                     backgroundColor: Colors.white,
-                                    side: const BorderSide(color: Color(0xFFE2E8F0)),
+                                    side: const BorderSide(
+                                      color: Color(0xFFE2E8F0),
+                                    ),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12),
                                     ),
@@ -225,11 +248,11 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      // Logo Google SVG como imagen
-                                      SizedBox(
+                                      // ✅ Logo Google desde assets/Icon/google.svg
+                                      SvgPicture.asset(
+                                        'assets/Icon/google.svg',
                                         width: 24,
                                         height: 24,
-                                        child: CustomPaint(painter: _GoogleLogoPainter()),
                                       ),
                                       const SizedBox(width: 12),
                                       const Text(
@@ -247,11 +270,14 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
                         const SizedBox(height: 20),
 
-                        // Términos
                         RichText(
                           textAlign: TextAlign.center,
                           text: const TextSpan(
-                            style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8), height: 1.6),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Color(0xFF94A3B8),
+                              height: 1.6,
+                            ),
                             children: [
                               TextSpan(text: 'Al continuar, aceptas nuestros '),
                               TextSpan(
@@ -289,57 +315,4 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       shape: BoxShape.circle,
     ),
   );
-}
-
-// Painter para el logo de Google
-class _GoogleLogoPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..style = PaintingStyle.fill;
-    final path = Path();
-
-    // Azul
-    paint.color = const Color(0xFF4285F4);
-    path.moveTo(size.width, size.height * 0.51);
-    path.lineTo(size.width, size.height * 0.51);
-    canvas.drawPath(path, paint);
-
-    // Usamos un círculo de colores simplificado
-    final rect = Rect.fromLTWH(0, 0, size.width, size.height);
-    final gradient = SweepGradient(
-      colors: const [
-        Color(0xFF4285F4),
-        Color(0xFF34A853),
-        Color(0xFFFBBC05),
-        Color(0xFFEA4335),
-        Color(0xFF4285F4),
-      ],
-      stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
-    );
-    paint.shader = gradient.createShader(rect);
-    canvas.drawCircle(
-      Offset(size.width / 2, size.height / 2),
-      size.width / 2,
-      paint,
-    );
-
-    // Hueco blanco del centro
-    paint.shader = null;
-    paint.color = Colors.white;
-    canvas.drawCircle(
-      Offset(size.width / 2, size.height / 2),
-      size.width / 3.5,
-      paint,
-    );
-
-    // G letra simplificada
-    paint.color = const Color(0xFF4285F4);
-    canvas.drawRect(
-      Rect.fromLTWH(size.width / 2, size.height * 0.38, size.width * 0.38, size.height * 0.13),
-      paint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

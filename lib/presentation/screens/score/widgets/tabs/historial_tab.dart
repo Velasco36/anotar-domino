@@ -13,7 +13,6 @@ class HistorialTab extends StatefulWidget {
 
 class _HistorialTabState extends State<HistorialTab>
     with AutomaticKeepAliveClientMixin {
-  // ✅ keepAlive evita que el tab se reconstruya cada vez que cambias de tab
   @override
   bool get wantKeepAlive => true;
 
@@ -22,11 +21,194 @@ class _HistorialTabState extends State<HistorialTab>
 
   static const Color primaryColor = Color(0xFFf97316);
   static const Color charcoalColor = Color(0xFF0f172a);
-  static const Color bgMainColor = Color(0xFFf8fafc);
   static const Color slate100 = Color(0xFFf1f5f9);
   static const Color slate200 = Color(0xFFe2e8f0);
   static const Color slate400 = Color(0xFF94a3b8);
   static const Color slate500 = Color(0xFF64748b);
+
+  // ✅ Dialog de confirmación antes de eliminar
+  Future<void> _confirmarEliminar(BuildContext context, String docId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Eliminar partida',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w900,
+            color: charcoalColor,
+          ),
+        ),
+        content: Text(
+          '¿Estás seguro? Esta acción no se puede deshacer.',
+          style: TextStyle(fontSize: 13, color: slate500),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        actions: [
+          Row(
+            children: [
+              Expanded(
+                child: TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  style: TextButton.styleFrom(
+                    backgroundColor: slate100,
+                    foregroundColor: slate500,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Text(
+                    'Cancelar',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: TextButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  style: TextButton.styleFrom(
+                    backgroundColor: const Color(0xFFef4444),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Text(
+                    'Eliminar',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await _partidaService.eliminarPartida(docId);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.check_circle_outline, color: Colors.white, size: 18),
+                SizedBox(width: 8),
+                Text(
+                  'Partida eliminada',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFF22c55e),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
+  // ✅ Confirmar restablecer todo el historial
+  Future<void> _confirmarRestablecerTodo(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Restablecer historial',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w900,
+            color: charcoalColor,
+          ),
+        ),
+        content: Text(
+          'Se eliminarán TODAS las partidas. Esta acción no se puede deshacer.',
+          style: TextStyle(fontSize: 13, color: slate500),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        actions: [
+          Row(
+            children: [
+              Expanded(
+                child: TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  style: TextButton.styleFrom(
+                    backgroundColor: slate100,
+                    foregroundColor: slate500,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Text(
+                    'Cancelar',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: TextButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  style: TextButton.styleFrom(
+                    backgroundColor: const Color(0xFFef4444),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Text(
+                    'Restablecer',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await _partidaService.eliminarTodoElHistorial();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.restart_alt, color: Colors.white, size: 18),
+                SizedBox(width: 8),
+                Text(
+                  'Historial restablecido',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFF22c55e),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,29 +216,57 @@ class _HistorialTabState extends State<HistorialTab>
 
     return Column(
       children: [
-        // ─── Buscador ───
+        // ─── Buscador + botón restablecer ───
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: slate200),
-            ),
-            child: TextField(
-              onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
-              decoration: InputDecoration(
-                hintText: 'Buscar por jugador o equipo...',
-                hintStyle: TextStyle(fontSize: 14, color: slate400),
-                border: InputBorder.none,
-                prefixIcon: Icon(Icons.search, color: slate400, size: 20),
-                contentPadding: const EdgeInsets.symmetric(
-                  vertical: 12,
-                  horizontal: 16,
+          child: Row(
+            children: [
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: slate200),
+                  ),
+                  child: TextField(
+                    onChanged: (v) =>
+                        setState(() => _searchQuery = v.toLowerCase()),
+                    decoration: InputDecoration(
+                      hintText: 'Buscar por jugador o equipo...',
+                      hintStyle: TextStyle(fontSize: 14, color: slate400),
+                      border: InputBorder.none,
+                      prefixIcon: Icon(Icons.search, color: slate400, size: 20),
+                      contentPadding: const EdgeInsets.symmetric(
+                        vertical: 12,
+                        horizontal: 16,
+                      ),
+                    ),
+                    style: TextStyle(fontSize: 14, color: charcoalColor),
+                  ),
                 ),
               ),
-              style: TextStyle(fontSize: 14, color: charcoalColor),
-            ),
+              const SizedBox(width: 10),
+              // ✅ Botón restablecer todo
+              GestureDetector(
+                onTap: () => _confirmarRestablecerTodo(context),
+                child: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFef4444).withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: const Color(0xFFef4444).withOpacity(0.2),
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.restart_alt,
+                    size: 20,
+                    color: Color(0xFFef4444),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
 
@@ -93,8 +303,47 @@ class _HistorialTabState extends State<HistorialTab>
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
                 itemCount: docs.length,
                 itemBuilder: (context, index) {
-                  final data = docs[index].data() as Map<String, dynamic>;
-                  return _buildPartidaCard(data);
+                  final doc = docs[index];
+                  final data = doc.data() as Map<String, dynamic>;
+
+                  // ✅ Swipe izquierda para eliminar
+                  return Dismissible(
+                    key: Key(doc.id),
+                    direction: DismissDirection.endToStart,
+                    confirmDismiss: (_) async {
+                      await _confirmarEliminar(context, doc.id);
+                      return false; // siempre false — el stream actualiza solo
+                    },
+                    background: Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFef4444),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      alignment: Alignment.centerRight,
+                      padding: const EdgeInsets.only(right: 20),
+                      child: const Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.delete_outline,
+                            color: Colors.white,
+                            size: 22,
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'Eliminar',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    child: _buildPartidaCard(data, doc.id),
+                  );
                 },
               );
             },
@@ -104,7 +353,7 @@ class _HistorialTabState extends State<HistorialTab>
     );
   }
 
-  Widget _buildPartidaCard(Map<String, dynamic> data) {
+  Widget _buildPartidaCard(Map<String, dynamic> data, String docId) {
     final equipoA = (data['equipoA'] as List).join(' & ');
     final equipoB = (data['equipoB'] as List).join(' & ');
     final puntajes = data['puntajes'] as Map<String, dynamic>;
@@ -147,7 +396,7 @@ class _HistorialTabState extends State<HistorialTab>
           padding: const EdgeInsets.all(14),
           child: Column(
             children: [
-              // Fecha y flecha
+              // Fecha + botón eliminar
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -162,7 +411,25 @@ class _HistorialTabState extends State<HistorialTab>
                   Row(
                     children: [
                       Icon(Icons.emoji_events, color: primaryColor, size: 16),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 6),
+                      // ✅ Botón eliminar visible en la card
+                      GestureDetector(
+                        onTap: () => _confirmarEliminar(context, docId),
+                        child: Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFef4444).withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.delete_outline,
+                            size: 15,
+                            color: Color(0xFFef4444),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
                       Icon(Icons.arrow_forward_ios, size: 11, color: slate400),
                     ],
                   ),

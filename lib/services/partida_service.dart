@@ -55,6 +55,30 @@ class PartidaService {
     await guardarJugadores([...equipoA, ...equipoB]);
   }
 
+  // ✅ Eliminar una partida por ID
+  Future<void> eliminarPartida(String partidaId) async {
+    await _db
+        .collection('users')
+        .doc(_uid)
+        .collection('partidas')
+        .doc(partidaId)
+        .delete();
+  }
+
+  // ✅ Eliminar todo el historial de una vez (batch)
+  Future<void> eliminarTodoElHistorial() async {
+    final snapshot = await _db
+        .collection('users')
+        .doc(_uid)
+        .collection('partidas')
+        .get();
+    final batch = _db.batch();
+    for (final doc in snapshot.docs) {
+      batch.delete(doc.reference);
+    }
+    await batch.commit();
+  }
+
   Stream<QuerySnapshot> getHistorial() {
     return _db
         .collection('users')

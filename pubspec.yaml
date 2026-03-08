@@ -16,6 +16,7 @@ dependencies:
   firebase_auth: ^5.0.0
   google_sign_in: ^6.2.1
   cloud_firestore: ^5.0.0
+  flutter_svg: ^2.0.0
 
 dev_dependencies:
   flutter_test:
@@ -46,5 +47,6 @@ flutter:
   # Si vas a usar assets, agrégalos aquí DENTRO de 'flutter:'
   assets:
     - assets/icon/icon.png
+    - assets/Icon/google.svg
     # Si tienes icon_foreground.png, agrégalo también:
     # - assets/icon/icon_foreground.png
