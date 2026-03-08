@@ -4,6 +4,7 @@ import '../../../../models/team_data.dart';
 import 'tabs/historial_tab.dart';
 import 'tabs/ranking_tab.dart';
 import 'tabs/jugadores_tab.dart';
+import './premium_guard.dart';
 
 class HistoryScreen extends StatefulWidget {
   final List<Map<String, dynamic>> roundHistory;
@@ -208,10 +209,29 @@ class _HistoryScreenState extends State<HistoryScreen>
             child: _tabController != null
                 ? TabBarView(
                     controller: _tabController,
-                    children: const [
-                      HistorialTab(),
-                      RankingTab(),
-                      JugadoresTab(),
+                    children: [
+                       PremiumGuard(
+                        lockedMessage: 'Historial Premium',
+                        lockedSubtitle:
+                            'Suscríbete para ver las estadisticas por equipo',
+                        lockedIcon: Icons.leaderboard,
+                        child: HistorialTab(),
+                      ),
+
+                      // ✅ Historial disponible para todos
+
+
+                      // 🔒 Ranking — solo Premium
+                      PremiumGuard(
+                        lockedMessage: 'Ranking Premium',
+                        lockedSubtitle:
+                            'Suscríbete para ver quién domina la mesa — individual y por equipo',
+                        lockedIcon: Icons.leaderboard,
+                        child: RankingTab(),
+                      ),
+
+                      // 🔒 Jugadores — solo Premium
+                     const JugadoresTab(),
                     ],
                   )
                 : const SizedBox.shrink(),
@@ -251,18 +271,51 @@ class _HistoryScreenState extends State<HistoryScreen>
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
                   ),
-                  tabs: const [
+                  tabs: [
+                    // 🔒 Historial con badge PRO
                     Tab(
-                      icon: Icon(Icons.history, size: 22),
-                      text: 'HISTORIAL',
-                      iconMargin: EdgeInsets.only(bottom: 2),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              Icon(Icons.history, size: 22),
+                              Positioned(
+                                top: -4,
+                                right: -10,
+                                child: PremiumBadge(),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 2),
+                          Text('HISTORIAL', style: TextStyle(fontSize: 10)),
+                        ],
+                      ),
                     ),
+                    // 🔒 Ranking con badge PRO
                     Tab(
-                      icon: Icon(Icons.leaderboard, size: 22),
-                      text: 'RANKING',
-                      iconMargin: EdgeInsets.only(bottom: 2),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              Icon(Icons.leaderboard, size: 22),
+                              Positioned(
+                                top: -4,
+                                right: -10,
+                                child: PremiumBadge(),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 2),
+                          Text('RANKING', style: TextStyle(fontSize: 10)),
+                        ],
+                      ),
                     ),
-                    Tab(
+                    // ✅ Jugadores — libre
+                    const Tab(
                       icon: Icon(Icons.people_alt_outlined, size: 22),
                       text: 'JUGADORES',
                       iconMargin: EdgeInsets.only(bottom: 2),
