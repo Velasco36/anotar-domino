@@ -898,9 +898,11 @@ class _MatchScreenState extends State<MatchScreen>
                   // ─── Lista de rondas ───
                   Expanded(
                     child: ListView.builder(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
+                      padding: EdgeInsets.only(
+                        left: 12,
+                        right: 12,
+                        top: 8,
+                        bottom: _hideButtons ? 100 : 20, // ✅ Espacio extra para que el botón no tape la última ronda
                       ),
                       itemCount: roundHistory.length,
                       itemBuilder: (context, index) {
