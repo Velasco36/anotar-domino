@@ -1,39 +1,59 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'subscription_service.dart'; // ✅ importa para usar keyIsPremium
 
 class PartidaService {
   static const String _keyPartidas = 'partidas';
   static const String _keyJugadores = 'jugadores';
-  static const int _minutosExpiracion = 1;
+
+  // limites jugadores
+  static const int _limiteNormal = 8;
+  static const int _limitePremium = 20;
+
   // ─────────────────────────────────────────
-  // PARTIDAS
+  // SUSCRIPCIÓN — lee la misma key que SubscriptionService
   // ─────────────────────────────────────────
+
+  /// Lee directamente la cache de SubscriptionService.
+  /// Funciona sin internet porque SubscriptionService ya guardó el valor.
+  Future<bool> esPremium() async {
+    final prefs = await SharedPreferences.getInstance();
+    // ✅ Usa SubscriptionService.keyIsPremium en vez de su propia key privada
+    return prefs.getBool(SubscriptionService.keyIsPremium) ?? false;
+  }
+
+  Future<int> _limiteJugadores() async {
+    final premium = await esPremium();
+    return premium ? _limitePremium : _limiteNormal;
+  }
+
+  // ─────────────────────────────────────────
+  // PARTIDAS — sin expiración automática
+  // ─────────────────────────────────────────
+
   Future<List<Map<String, dynamic>>> getPartidas() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getStringList(_keyPartidas) ?? [];
-    final ahora = DateTime.now();
-    final List<Map<String, dynamic>> validas = [];
-    final List<String> noExpiradas = [];
+
+    final List<Map<String, dynamic>> partidas = [];
+
     for (final item in raw) {
       try {
         final Map<String, dynamic> partida = jsonDecode(item);
-        final fecha = DateTime.parse(partida['fecha'] as String);
-        final diff = ahora.difference(fecha);
-        if (diff.inMinutes < _minutosExpiracion) {
-          validas.add(partida);
-          noExpiradas.add(item);
-        }
-      } catch (_) {}
+        partidas.add(partida);
+      } catch (_) {
+        // ignorar items corruptos
+      }
     }
-    if (noExpiradas.length != raw.length) {
-      await prefs.setStringList(_keyPartidas, noExpiradas);
-    }
-    validas.sort((a, b) {
-      final fa = DateTime.parse(a['fecha'] as String);
-      final fb = DateTime.parse(b['fecha'] as String);
+
+    // ✅ Ordenar por fecha descendente (más reciente primero)
+    partidas.sort((a, b) {
+      final fa = DateTime.tryParse(a['fecha'] ?? '') ?? DateTime(0);
+      final fb = DateTime.tryParse(b['fecha'] ?? '') ?? DateTime(0);
       return fb.compareTo(fa);
     });
-    return validas;
+
+    return partidas;
   }
 
   Future<void> guardarPartida({
@@ -47,6 +67,7 @@ class PartidaService {
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getStringList(_keyPartidas) ?? [];
+
     final nuevaPartida = {
       'id': DateTime.now().millisecondsSinceEpoch.toString(),
       'equipoA': equipoA,
@@ -57,22 +78,27 @@ class PartidaService {
       'rounds': rounds,
       'fecha': DateTime.now().toIso8601String(),
     };
+
     raw.insert(0, jsonEncode(nuevaPartida));
+
     await prefs.setStringList(_keyPartidas, raw);
+
     await guardarJugadores([...equipoA, ...equipoB]);
   }
 
   Future<void> eliminarPartida(String id) async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getStringList(_keyPartidas) ?? [];
+
     final actualizado = raw.where((item) {
       try {
-        final partida = jsonDecode(item) as Map<String, dynamic>;
+        final partida = jsonDecode(item);
         return partida['id'] != id;
       } catch (_) {
         return false;
       }
     }).toList();
+
     await prefs.setStringList(_keyPartidas, actualizado);
   }
 
@@ -88,6 +114,7 @@ class PartidaService {
   // ─────────────────────────────────────────
   // JUGADORES
   // ─────────────────────────────────────────
+
   Future<List<String>> getJugadores() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getStringList(_keyJugadores) ?? [];
@@ -95,13 +122,25 @@ class PartidaService {
 
   Future<void> guardarJugadores(List<String> nombres) async {
     final prefs = await SharedPreferences.getInstance();
+
     final existentes = prefs.getStringList(_keyJugadores) ?? [];
-    final nuevos = nombres
-        .map((n) => n.trim().toUpperCase())
-        .where((n) => n.isNotEmpty && !existentes.contains(n))
-        .toList();
-    if (nuevos.isEmpty) return;
-    await prefs.setStringList(_keyJugadores, [...existentes, ...nuevos]);
+    final limite = await _limiteJugadores();
+
+    List<String> jugadores = List.from(existentes);
+
+    for (var nombre in nombres) {
+      final n = nombre.trim().toUpperCase();
+
+      if (n.isEmpty || jugadores.contains(n)) continue;
+
+      if (jugadores.length >= limite) {
+        jugadores.removeLast();
+      }
+
+      jugadores.add(n);
+    }
+
+    await prefs.setStringList(_keyJugadores, jugadores);
   }
 
   Future<void> eliminarJugador(String nombre) async {
@@ -117,61 +156,75 @@ class PartidaService {
   }
 
   // ─────────────────────────────────────────
-  // ✅ NUEVO: Renombrar jugador
-  // Actualiza el nombre en la lista de jugadores
-  // Y también en TODAS las partidas existentes
+  // RENOMBRAR JUGADOR
   // ─────────────────────────────────────────
+
   Future<void> renombrarJugador(String viejo, String nuevo) async {
     final prefs = await SharedPreferences.getInstance();
+
     final nuevoNorm = nuevo.trim().toUpperCase();
     if (nuevoNorm.isEmpty) return;
-    // 1. Actualizar en lista de jugadores
+
     final jugadores = prefs.getStringList(_keyJugadores) ?? [];
-    final index = jugadores.indexOf(viejo);
-    // Si el nuevo nombre ya existe y no es el mismo → no duplicar
+
     if (jugadores.contains(nuevoNorm) && nuevoNorm != viejo) return;
+
+    final index = jugadores.indexOf(viejo);
     if (index != -1) {
       jugadores[index] = nuevoNorm;
     }
+
     await prefs.setStringList(_keyJugadores, jugadores);
-    // 2. Actualizar en todas las partidas guardadas
+
     final raw = prefs.getStringList(_keyPartidas) ?? [];
     final List<String> actualizadas = [];
+
     for (final item in raw) {
       try {
         final Map<String, dynamic> partida = jsonDecode(item);
-        // Reemplazar en equipoA
+
         final equipoA = List<String>.from(partida['equipoA'] ?? []);
         final idxA = equipoA.indexOf(viejo);
         if (idxA != -1) equipoA[idxA] = nuevoNorm;
-        partida['equipoA'] = equipoA;
-        // Reemplazar en equipoB
+
         final equipoB = List<String>.from(partida['equipoB'] ?? []);
         final idxB = equipoB.indexOf(viejo);
         if (idxB != -1) equipoB[idxB] = nuevoNorm;
+
+        partida['equipoA'] = equipoA;
         partida['equipoB'] = equipoB;
+
         actualizadas.add(jsonEncode(partida));
       } catch (_) {
-        actualizadas.add(item); // Mantener sin cambios si falla
+        actualizadas.add(item);
       }
     }
+
     await prefs.setStringList(_keyPartidas, actualizadas);
   }
 
   // ─────────────────────────────────────────
-  // ✅ NUEVO: Stats de un jugador desde local
+  // STATS JUGADOR
   // ─────────────────────────────────────────
+
   Future<Map<String, dynamic>> getStatsJugador(String nombre) async {
-    final partidas = await getPartidas(); // Solo devuelve NO expiradas
-    int victorias = 0, derrotas = 0, totalPartidas = 0;
+    final partidas = await getPartidas();
+
+    int victorias = 0;
+    int derrotas = 0;
+    int totalPartidas = 0;
+
     for (final p in partidas) {
       final equipoA = List<String>.from(p['equipoA'] ?? []);
       final equipoB = List<String>.from(p['equipoB'] ?? []);
-      final ganador = p['ganador'] as String;
+      final ganador = p['ganador'];
+
       final estaEnA = equipoA.contains(nombre);
       final estaEnB = equipoB.contains(nombre);
+
       if (estaEnA || estaEnB) {
         totalPartidas++;
+
         if ((estaEnA && ganador == 'equipoA') ||
             (estaEnB && ganador == 'equipoB')) {
           victorias++;
@@ -180,6 +233,7 @@ class PartidaService {
         }
       }
     }
+
     return {
       'victorias': victorias,
       'derrotas': derrotas,
@@ -193,32 +247,44 @@ class PartidaService {
   // ─────────────────────────────────────────
   // RANKING
   // ─────────────────────────────────────────
+
   Future<Map<String, int>> getRanking() async {
     final partidas = await getPartidas();
+
     final Map<String, int> victorias = {};
+
     for (final p in partidas) {
-      final ganador = p['ganador'] as String;
+      final ganador = p['ganador'];
+
       final List<String> ganadores = ganador == 'equipoA'
-          ? List<String>.from(p['equipoA'] ?? [])
-          : List<String>.from(p['equipoB'] ?? []);
+          ? List<String>.from(p['equipoA'])
+          : List<String>.from(p['equipoB']);
+
       for (final jugador in ganadores) {
         victorias[jugador] = (victorias[jugador] ?? 0) + 1;
       }
     }
+
     return victorias;
   }
 
   Future<Map<String, int>> getRankingGrupal() async {
     final partidas = await getPartidas();
+
     final Map<String, int> victorias = {};
+
     for (final p in partidas) {
-      final ganador = p['ganador'] as String;
+      final ganador = p['ganador'];
+
       final List<String> equipo = ganador == 'equipoA'
-          ? List<String>.from(p['equipoA'] ?? [])
-          : List<String>.from(p['equipoB'] ?? []);
+          ? List<String>.from(p['equipoA'])
+          : List<String>.from(p['equipoB']);
+
       final nombreEquipo = equipo.join(' & ');
+
       victorias[nombreEquipo] = (victorias[nombreEquipo] ?? 0) + 1;
     }
+
     return victorias;
   }
 }

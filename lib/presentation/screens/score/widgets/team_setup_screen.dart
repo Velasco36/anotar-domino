@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../../../../models/team_data.dart';
 import '../../../../services/partida_service.dart';
 import './match_screen.dart';
+import './mesa_widget.dart';
 
 class TeamSetupScreen extends StatefulWidget {
   @override
@@ -146,6 +147,27 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
     );
   }
 
+  void _swapPlayers(
+    TextEditingController c1,
+    TextEditingController c2,
+    String id1,
+    String id2,
+  ) {
+    final temp = c1.text;
+    c1.text = c2.text;
+    c2.text = temp;
+
+    // Si uno de los dos era el que salía, movemos la estrella con el jugador
+    if (selectedStarter == id1) {
+      selectedStarter = id2;
+    } else if (selectedStarter == id2) {
+      selectedStarter = id1;
+    }
+
+    HapticFeedback.mediumImpact();
+    setState(() {});
+  }
+
   // ── BUILD ──────────────────────────────────────────────────────────────────
 
   @override
@@ -163,7 +185,17 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // ── Equipo A ──
-                  _sectionLabel('EQUIPO A', primaryColor),
+                  _sectionLabel(
+                    'EQUIPO A',
+                    primaryColor,
+                    onSwap:
+                        () => _swapPlayers(
+                          teamAPlayer1Controller,
+                          teamAPlayer2Controller,
+                          'p1',
+                          'p2',
+                        ),
+                  ),
                   const SizedBox(height: 10),
                   _teamCard(
                     controller1: teamAPlayer1Controller,
@@ -180,7 +212,17 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
                   const SizedBox(height: 20),
 
                   // ── Equipo B ──
-                  _sectionLabel('EQUIPO B', primaryDark),
+                  _sectionLabel(
+                    'EQUIPO B',
+                    primaryDark,
+                    onSwap:
+                        () => _swapPlayers(
+                          teamBPlayer1Controller,
+                          teamBPlayer2Controller,
+                          'p3',
+                          'p4',
+                        ),
+                  ),
                   const SizedBox(height: 10),
                   _teamCard(
                     controller1: teamBPlayer1Controller,
@@ -205,9 +247,18 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
                   ),
                   const SizedBox(height: 14),
 
-                  _buildMesa(),
+                  MesaWidget(
+                    selectedStarter: selectedStarter,
+                    onStarterSelected: (id) => setState(() => selectedStarter = id),
+                    p1Controller: teamAPlayer1Controller,
+                    p2Controller: teamAPlayer2Controller,
+                    p3Controller: teamBPlayer1Controller,
+                    p4Controller: teamBPlayer2Controller,
+                    primaryColor: primaryColor,
+                    primaryDark: primaryDark,
+                  ),
 
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 36),
                 ],
               ),
             ),
@@ -274,27 +325,57 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
 
   // ── SECTION LABEL ──────────────────────────────────────────────────────────
 
-  Widget _sectionLabel(String text, Color color) {
+  Widget _sectionLabel(String text, Color color, {VoidCallback? onSwap}) {
     return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Container(
-          width: 3,
-          height: 14,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(2),
-          ),
+        Row(
+          children: [
+            Container(
+              width: 3,
+              height: 14,
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              text,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w900,
+                color: color,
+                letterSpacing: 1.5,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: 8),
-        Text(
-          text,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w900,
-            color: color,
-            letterSpacing: 1.5,
+        if (onSwap != null)
+          GestureDetector(
+            onTap: onSwap,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.swap_vert, size: 14, color: color),
+                  const SizedBox(width: 4),
+                  Text(
+                    'CAMBIAR POSICIÓN',
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w800,
+                      color: color,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-        ),
       ],
     );
   }
@@ -574,150 +655,6 @@ class _TeamSetupScreenState extends State<TeamSetupScreen> {
     );
   }
 
-  // ── MESA ───────────────────────────────────────────────────────────────────
-
-  Widget _buildMesa() {
-    return Container(
-      height: 260,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: slate100),
-      ),
-      child: Stack(
-        children: [
-          Center(
-            child: Container(
-              width: 90,
-              height: 90,
-              decoration: BoxDecoration(
-                color: slate100,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: slate200),
-              ),
-              child: const Center(
-                child: Icon(Icons.casino, size: 28, color: slate300),
-              ),
-            ),
-          ),
-          Positioned(
-            top: 14,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: _mesaSeat('p2', teamAPlayer2Controller, primaryColor),
-            ),
-          ),
-          Positioned(
-            bottom: 14,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: _mesaSeat('p1', teamAPlayer1Controller, primaryColor),
-            ),
-          ),
-          Positioned(
-            left: 14,
-            top: 0,
-            bottom: 0,
-            child: Center(
-              child: _mesaSeat('p4', teamBPlayer2Controller, primaryDark),
-            ),
-          ),
-          Positioned(
-            right: 14,
-            top: 0,
-            bottom: 0,
-            child: Center(
-              child: _mesaSeat('p3', teamBPlayer1Controller, primaryDark),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _mesaSeat(
-    String playerId,
-    TextEditingController controller,
-    Color teamColor,
-  ) {
-    final isSelected = selectedStarter == playerId;
-    final name = controller.text;
-    final inicial = name.isNotEmpty ? name[0].toUpperCase() : '?';
-
-    return GestureDetector(
-      onTap: () => setState(() => selectedStarter = playerId),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: isSelected ? teamColor.withOpacity(0.12) : slate100,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: isSelected ? teamColor : slate200,
-                    width: isSelected ? 2.5 : 1,
-                  ),
-                  boxShadow: isSelected
-                      ? [
-                          BoxShadow(
-                            color: teamColor.withOpacity(0.25),
-                            blurRadius: 12,
-                          ),
-                        ]
-                      : null,
-                ),
-                child: Center(
-                  child: Text(
-                    inicial,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                      color: isSelected ? teamColor : slate400,
-                    ),
-                  ),
-                ),
-              ),
-              if (isSelected)
-                Positioned(
-                  top: -4,
-                  right: -4,
-                  child: Container(
-                    width: 18,
-                    height: 18,
-                    decoration: BoxDecoration(
-                      color: teamColor,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.star,
-                      size: 11,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            name.isEmpty ? '—' : name,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
-              color: isSelected ? teamColor : slate500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   // ── BOTTOM BUTTON ──────────────────────────────────────────────────────────
 

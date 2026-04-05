@@ -49,6 +49,6 @@ flutter:
   # Si vas a usar assets, agrégalos aquí DENTRO de 'flutter:'
   assets:
     - assets/icon/icon.png
-    - assets/Icon/google.svg
+    - assets/icon/google.svg
     # Si tienes icon_foreground.png, agrégalo también:
     # - assets/icon/icon_foreground.png

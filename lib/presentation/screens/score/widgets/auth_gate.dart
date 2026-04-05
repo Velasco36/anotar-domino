@@ -22,12 +22,19 @@ class AuthGate extends StatelessWidget {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             body: Center(
-              child: Column(
+             child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  CircularProgressIndicator(),
+                  CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      Color(0xFFFF9800), // Naranja material
+                      // O puedes usar: Colors.orange
+                      // O un naranja más vibrante: Color(0xFFFF5722)
+                    ),
+                    strokeWidth: 4, // Grosor de la línea (opcional)
+                  ),
                   SizedBox(height: 16),
-                  Text('Cargando...'),
+                 
                 ],
               ),
             ),
