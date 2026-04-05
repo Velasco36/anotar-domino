@@ -33,8 +33,24 @@ class PartidaDetailScreen extends StatelessWidget {
     // Fecha
     String fechaTexto = '';
     if (partida['fecha'] != null) {
-      final fecha = (partida['fecha'] as Timestamp).toDate();
-      fechaTexto = DateFormat('dd MMM yyyy, HH:mm').format(fecha);
+      final dynFecha = partida['fecha'];
+      DateTime? fecha;
+      
+      if (dynFecha is Timestamp) {
+        fecha = dynFecha.toDate();
+      } else if (dynFecha is DateTime) {
+        fecha = dynFecha;
+      } else if (dynFecha is String) {
+        fecha = DateTime.tryParse(dynFecha);
+      } else if (dynFecha is int) {
+        fecha = DateTime.fromMillisecondsSinceEpoch(dynFecha);
+      }
+
+      if (fecha != null) {
+        fechaTexto = DateFormat('dd MMM yyyy, HH:mm').format(fecha);
+      } else {
+        fechaTexto = dynFecha.toString(); // Fallback si no se puede parsear
+      }
     }
 
     final nombreEquipoA = equipoA.join(' & ');

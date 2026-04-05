@@ -113,6 +113,7 @@ class _MatchScreenState extends State<MatchScreen>
         ganador: ganadorEsEquipoA ? 'equipoA' : 'equipoB',
         targetScore: targetScore,
         rounds: roundNumber,
+        roundsData: roundHistory, // ✅ Añadido para que se guarde el detalle
       );
     } catch (e) {
       debugPrint('Error guardando partida: $e');

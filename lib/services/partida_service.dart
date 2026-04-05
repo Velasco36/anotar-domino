@@ -64,6 +64,7 @@ class PartidaService {
     required String ganador,
     int targetScore = 100,
     int rounds = 0,
+    List<Map<String, dynamic>>? roundsData,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getStringList(_keyPartidas) ?? [];
@@ -76,6 +77,7 @@ class PartidaService {
       'ganador': ganador,
       'targetScore': targetScore,
       'rounds': rounds,
+      'roundsData': roundsData ?? [],
       'fecha': DateTime.now().toIso8601String(),
     };
 
