@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../../../../models/team_data.dart';
 import '../../../../services/partida_service.dart';
 import 'match_screen.dart';
+import 'mesa_widget.dart';
 
 class EditMatchSettingsScreen extends StatefulWidget {
   final Map<String, dynamic> matchData;
@@ -32,7 +33,7 @@ class _EditMatchSettingsScreenState extends State<EditMatchSettingsScreen> {
   static const Color slate500 = Color(0xFF64748b);
 
   late Map<String, TextEditingController> _controllers;
-  String? _selectedStarter;
+  String _selectedStarter = ''; // ✅ Ya no nullable, inicializado vacío
   bool _starterError = false;
 
   late TeamData _originalTeamData;
@@ -52,14 +53,14 @@ class _EditMatchSettingsScreenState extends State<EditMatchSettingsScreen> {
     _winningTeam = widget.matchData['winningTeam'] as String;
 
     _controllers = {
-      'teamA1': TextEditingController(text: _originalTeamData.teamAPlayer1),
-      'teamA2': TextEditingController(text: _originalTeamData.teamAPlayer2),
-      'teamB1': TextEditingController(text: _originalTeamData.teamBPlayer1),
-      'teamB2': TextEditingController(text: _originalTeamData.teamBPlayer2),
+      'p1': TextEditingController(text: _originalTeamData.teamAPlayer1),
+      'p2': TextEditingController(text: _originalTeamData.teamAPlayer2),
+      'p3': TextEditingController(text: _originalTeamData.teamBPlayer1),
+      'p4': TextEditingController(text: _originalTeamData.teamBPlayer2),
     };
 
-    // Igual que el modal: null al abrir, usuario debe tocar estrella
-    _selectedStarter = null;
+    // Igual que el modal: inicializamos sin selección
+    _selectedStarter = '';
     _cargarJugadores();
   }
 
@@ -74,31 +75,37 @@ class _EditMatchSettingsScreenState extends State<EditMatchSettingsScreen> {
     super.dispose();
   }
 
-  bool _isStarter(String key) =>
-      _selectedStarter != null && _selectedStarter == _controllers[key]!.text;
+  bool _isStarter(String key) => _selectedStarter == key;
 
   void _setStarter(String key) {
     setState(() {
-      _selectedStarter = _controllers[key]!.text;
+      _selectedStarter = key;
       _starterError = false;
     });
   }
 
-  String _getStarterId(String name) {
-    for (final entry in _controllers.entries) {
-      if (entry.value.text == name) return entry.key;
-    }
-    return 'teamA1';
+  void _swapPlayers(String p1Key, String p2Key) {
+    setState(() {
+      final tempText = _controllers[p1Key]!.text;
+      _controllers[p1Key]!.text = _controllers[p2Key]!.text;
+      _controllers[p2Key]!.text = tempText;
+
+      // Mantener la salida en la misma silla lógicamente si se intercambian
+      if (_selectedStarter == p1Key) {
+        _selectedStarter = p2Key;
+      } else if (_selectedStarter == p2Key) {
+        _selectedStarter = p1Key;
+      }
+    });
+
+    HapticFeedback.mediumImpact();
   }
 
   void _save() {
-    final jugadoresActuales = _controllers.values
-        .map((c) => c.text.trim())
-        .toList();
-    final starterValido =
-        _selectedStarter != null &&
-        _selectedStarter!.trim().isNotEmpty &&
-        jugadoresActuales.contains(_selectedStarter!.trim());
+    // Verificar que esté seleccionado un puesto válido y tenga nombre
+    final starterValido = _selectedStarter.isNotEmpty &&
+        _controllers[_selectedStarter] != null &&
+        _controllers[_selectedStarter]!.text.trim().isNotEmpty;
 
     if (!starterValido) {
       setState(() => _starterError = true);
@@ -127,12 +134,12 @@ class _EditMatchSettingsScreenState extends State<EditMatchSettingsScreen> {
     }
 
     final updatedTeamData = TeamData(
-      teamAPlayer1: _controllers['teamA1']!.text.trim(),
-      teamAPlayer2: _controllers['teamA2']!.text.trim(),
-      teamBPlayer1: _controllers['teamB1']!.text.trim(),
-      teamBPlayer2: _controllers['teamB2']!.text.trim(),
-      startingPlayerId: _getStarterId(_selectedStarter!),
-      startingPlayerName: _selectedStarter!,
+      teamAPlayer1: _controllers['p1']!.text.trim(),
+      teamAPlayer2: _controllers['p2']!.text.trim(),
+      teamBPlayer1: _controllers['p3']!.text.trim(),
+      teamBPlayer2: _controllers['p4']!.text.trim(),
+      startingPlayerId: _selectedStarter,
+      startingPlayerName: _controllers[_selectedStarter]!.text.trim(),
     );
 
     final updatedMatchSummary = {
@@ -175,10 +182,14 @@ class _EditMatchSettingsScreenState extends State<EditMatchSettingsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // ── Equipo A ──
-                    _sectionLabel('EQUIPO A', primaryColor),
+                    _sectionLabel(
+                      'EQUIPO A',
+                      primaryColor,
+                      onSwap: () => _swapPlayers('p1', 'p2'),
+                    ),
                     const SizedBox(height: 10),
                     _teamCard(
-                      keys: ['teamA1', 'teamA2'],
+                      keys: ['p1', 'p2'],
                       teamColor: primaryColor,
                       bgColor: primaryLight,
                       cardBg: Colors.white,
@@ -187,10 +198,14 @@ class _EditMatchSettingsScreenState extends State<EditMatchSettingsScreen> {
                     const SizedBox(height: 20),
 
                     // ── Equipo B ──
-                    _sectionLabel('EQUIPO B', primaryDark),
+                    _sectionLabel(
+                      'EQUIPO B',
+                      primaryDark,
+                      onSwap: () => _swapPlayers('p3', 'p4'),
+                    ),
                     const SizedBox(height: 10),
                     _teamCard(
-                      keys: ['teamB1', 'teamB2'],
+                      keys: ['p3', 'p4'],
                       teamColor: primaryDark,
                       bgColor: const Color(0xFFFFEDD5),
                       cardBg: Colors.white,
@@ -243,7 +258,16 @@ class _EditMatchSettingsScreenState extends State<EditMatchSettingsScreen> {
                               )
                             : null,
                       ),
-                      child: _buildMesa(),
+                      child: MesaWidget(
+                        selectedStarter: _selectedStarter,
+                        onStarterSelected: _setStarter,
+                        p1Controller: _controllers['p1']!,
+                        p2Controller: _controllers['p2']!,
+                        p3Controller: _controllers['p3']!,
+                        p4Controller: _controllers['p4']!,
+                        primaryColor: primaryColor,
+                        primaryDark: primaryDark,
+                      ),
                     ),
 
                     const SizedBox(height: 24),
@@ -359,7 +383,7 @@ class _EditMatchSettingsScreenState extends State<EditMatchSettingsScreen> {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: teamColor.withOpacity(0.15)),
         boxShadow: [
-          BoxShadow(
+           BoxShadow(
             color: Colors.black.withOpacity(0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
@@ -370,14 +394,14 @@ class _EditMatchSettingsScreenState extends State<EditMatchSettingsScreen> {
       child: Column(
         children: [
           _playerRow(
-            key: keys[0],
+            playerKey: keys[0],
             label: 'Jugador 1',
             teamColor: teamColor,
             bgColor: bgColor,
           ),
           const SizedBox(height: 12),
           _playerRow(
-            key: keys[1],
+            playerKey: keys[1],
             label: 'Jugador 2',
             teamColor: teamColor,
             bgColor: bgColor,
@@ -390,44 +414,47 @@ class _EditMatchSettingsScreenState extends State<EditMatchSettingsScreen> {
   // ── PLAYER ROW ─────────────────────────────────────────────────────────────
 
   Widget _playerRow({
-    required String key,
+    required String playerKey,
     required String label,
     required Color teamColor,
     required Color bgColor,
   }) {
-    final isSelected = _isStarter(key);
-    final controller = _controllers[key]!;
+    final isSelected = _isStarter(playerKey);
+    final controller = _controllers[playerKey]!;
 
     return Row(
       children: [
-        // Avatar inicial
-        Container(
-          width: 38,
-          height: 38,
-          decoration: BoxDecoration(
-            color: bgColor,
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: isSelected ? teamColor : slate200,
-              width: isSelected ? 2 : 1,
-            ),
-          ),
-          child: Center(
-            child: Text(
-              controller.text.isNotEmpty
-                  ? controller.text[0].toUpperCase()
-                  : '?',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w900,
-                color: teamColor,
+        // Avatar con ValueListenableBuilder para actualizarse al escribir
+        ValueListenableBuilder<TextEditingValue>(
+          valueListenable: controller,
+          builder: (context, value, _) {
+            return Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: bgColor,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: isSelected ? teamColor : slate200,
+                  width: isSelected ? 2 : 1,
+                ),
               ),
-            ),
-          ),
+              child: Center(
+                child: Text(
+                  value.text.isNotEmpty ? value.text[0].toUpperCase() : '?',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                    color: teamColor,
+                  ),
+                ),
+              ),
+            );
+          },
         ),
         const SizedBox(width: 10),
 
-        // Autocomplete
+        // Campo Autocomplete
         Expanded(
           child: Autocomplete<String>(
             initialValue: TextEditingValue(text: controller.text),
@@ -481,82 +508,75 @@ class _EditMatchSettingsScreenState extends State<EditMatchSettingsScreen> {
                 ),
               );
             },
-            fieldViewBuilder:
-                (context, fieldController, focusNode, onSubmitted) {
-                  fieldController.text = controller.text;
-                  fieldController.addListener(() {
-                    final upper = fieldController.text.toUpperCase();
-                    if (fieldController.text != upper) {
-                      fieldController.value = fieldController.value.copyWith(
-                        text: upper,
-                        selection: TextSelection.collapsed(
-                          offset: upper.length,
-                        ),
-                      );
-                    }
-                    if (controller.text != fieldController.text) {
-                      controller.text = fieldController.text;
-                      setState(() {});
-                    }
-                  });
-                  return TextField(
-                    controller: fieldController,
-                    focusNode: focusNode,
-                    textCapitalization: TextCapitalization.characters,
-                    inputFormatters: [
-                      TextInputFormatter.withFunction((oldValue, newValue) {
-                        return newValue.copyWith(
-                          text: newValue.text.toUpperCase(),
-                        );
-                      }),
-                    ],
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    decoration: InputDecoration(
-                      labelText: label,
-                      labelStyle: TextStyle(fontSize: 12, color: slate400),
-                      filled: true,
-                      fillColor: const Color(0xFFf8fafc),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide.none,
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: teamColor, width: 1.5),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
-                      ),
-                      isDense: true,
-                      suffixIcon: _jugadoresGuardados.isNotEmpty
-                          ? Icon(
-                              Icons.arrow_drop_down,
-                              size: 18,
-                              color: slate300,
-                            )
-                          : null,
-                    ),
-                  );
+            fieldViewBuilder: (context, fieldController, focusNode, onSubmitted) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted && fieldController.text != controller.text) {
+                   fieldController.text = controller.text;
+                }
+              });
+
+              return TextField(
+                controller: fieldController,
+                focusNode: focusNode,
+                textCapitalization: TextCapitalization.characters,
+                maxLength: 10,
+                inputFormatters: [
+                  TextInputFormatter.withFunction((oldValue, newValue) {
+                    return newValue.copyWith(
+                      text: newValue.text.toUpperCase(),
+                    );
+                  }),
+                ],
+                onChanged: (value) {
+                  final upper = value.toUpperCase();
+                  if (controller.text != upper) {
+                    controller.text = upper;
+                    setState(() {});
+                  }
                 },
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+                decoration: InputDecoration(
+                  labelText: label,
+                  labelStyle: TextStyle(fontSize: 12, color: slate400),
+                  filled: true,
+                  fillColor: const Color(0xFFf8fafc),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: teamColor, width: 1.5),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  isDense: true,
+                  suffixIcon: _jugadoresGuardados.isNotEmpty
+                      ? Icon(Icons.arrow_drop_down, size: 18, color: slate300)
+                      : null,
+                  counterStyle: TextStyle(fontSize: 10, color: slate400),
+                ),
+              );
+            },
             onSelected: (nombre) {
-              controller.text = nombre.toUpperCase();
-              if (_isStarter(key)) {
-                setState(() => _selectedStarter = nombre.toUpperCase());
-              } else {
-                setState(() {});
-              }
+              final nombreCortado = nombre.length > 10
+                  ? nombre.substring(0, 10).toUpperCase()
+                  : nombre.toUpperCase();
+              controller.text = nombreCortado;
+              setState(() {});
             },
           ),
         ),
         const SizedBox(width: 10),
 
-        // Estrella de salida
+        // Botón estrella
         GestureDetector(
-          onTap: () => _setStarter(key),
+          onTap: () => _setStarter(playerKey),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             width: 36,
@@ -578,161 +598,56 @@ class _EditMatchSettingsScreenState extends State<EditMatchSettingsScreen> {
 
   // ── SECTION LABEL ──────────────────────────────────────────────────────────
 
-  Widget _sectionLabel(String text, Color color) {
+  Widget _sectionLabel(String text, Color color, {VoidCallback? onSwap}) {
     return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Container(
-          width: 3,
-          height: 14,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          text,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w900,
-            color: color,
-            letterSpacing: 1.5,
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ── MESA ───────────────────────────────────────────────────────────────────
-
-  Widget _buildMesa() {
-    return Container(
-      height: 260,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: slate100),
-      ),
-      child: Stack(
-        children: [
-          Center(
-            child: Container(
-              width: 90,
-              height: 90,
+        Row(
+          children: [
+            Container(
+              width: 3,
+              height: 14,
               decoration: BoxDecoration(
-                color: slate100,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: slate200),
-              ),
-              child: const Center(
-                child: Icon(Icons.casino, size: 28, color: slate300),
+                color: color,
+                borderRadius: BorderRadius.circular(2),
               ),
             ),
-          ),
-          Positioned(
-            top: 14,
-            left: 0,
-            right: 0,
-            child: Center(child: _mesaSeat('teamA2', primaryColor)),
-          ),
-          Positioned(
-            bottom: 14,
-            left: 0,
-            right: 0,
-            child: Center(child: _mesaSeat('teamA1', primaryColor)),
-          ),
-          Positioned(
-            left: 14,
-            top: 0,
-            bottom: 0,
-            child: Center(child: _mesaSeat('teamB2', primaryDark)),
-          ),
-          Positioned(
-            right: 14,
-            top: 0,
-            bottom: 0,
-            child: Center(child: _mesaSeat('teamB1', primaryDark)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _mesaSeat(String key, Color teamColor) {
-    final isSelected = _isStarter(key);
-    final name = _controllers[key]!.text;
-    final inicial = name.isNotEmpty ? name[0].toUpperCase() : '?';
-
-    return GestureDetector(
-      onTap: () => _setStarter(key),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: isSelected ? teamColor.withOpacity(0.12) : slate100,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: isSelected ? teamColor : slate200,
-                    width: isSelected ? 2.5 : 1,
-                  ),
-                  boxShadow: isSelected
-                      ? [
-                          BoxShadow(
-                            color: teamColor.withOpacity(0.25),
-                            blurRadius: 12,
-                          ),
-                        ]
-                      : null,
-                ),
-                child: Center(
-                  child: Text(
-                    inicial,
+            const SizedBox(width: 8),
+            Text(
+              text,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w900,
+                color: color,
+                letterSpacing: 1.5,
+              ),
+            ),
+          ],
+        ),
+        if (onSwap != null)
+          InkWell(
+            onTap: onSwap,
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Row(
+                children: [
+                  Icon(Icons.swap_vert, size: 16, color: slate400),
+                  const SizedBox(width: 4),
+                  Text(
+                    'CAMBIAR POSICIÓN',
                     style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                      color: isSelected ? teamColor : slate400,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: slate400,
+                      letterSpacing: 0.5,
                     ),
                   ),
-                ),
+                ],
               ),
-              if (isSelected)
-                Positioned(
-                  top: -4,
-                  right: -4,
-                  child: Container(
-                    width: 18,
-                    height: 18,
-                    decoration: BoxDecoration(
-                      color: teamColor,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.star,
-                      size: 11,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            name.isEmpty ? '—' : name,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
-              color: isSelected ? teamColor : slate500,
             ),
           ),
-        ],
-      ),
+      ],
     );
   }
 }

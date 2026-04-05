@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 class MesaWidget extends StatefulWidget {
   final String selectedStarter;
-  final Function(String) onStarterSelected;
+  final ValueChanged<String> onStarterSelected;
   final TextEditingController p1Controller;
   final TextEditingController p2Controller;
   final TextEditingController p3Controller;

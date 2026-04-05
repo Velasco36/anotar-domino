@@ -7,11 +7,16 @@ class TeamData {
   final String startingPlayerName;
 
   TeamData({
-    required this.teamAPlayer1,
-    required this.teamAPlayer2,
-    required this.teamBPlayer1,
-    required this.teamBPlayer2,
-    required this.startingPlayerId,
-    required this.startingPlayerName,
-  });
+    String? teamAPlayer1,
+    String? teamAPlayer2,
+    String? teamBPlayer1,
+    String? teamBPlayer2,
+    String? startingPlayerId,
+    String? startingPlayerName,
+  })  : teamAPlayer1 = teamAPlayer1 ?? '',
+        teamAPlayer2 = teamAPlayer2 ?? '',
+        teamBPlayer1 = teamBPlayer1 ?? '',
+        teamBPlayer2 = teamBPlayer2 ?? '',
+        startingPlayerId = startingPlayerId ?? '',
+        startingPlayerName = startingPlayerName ?? '';
 }
