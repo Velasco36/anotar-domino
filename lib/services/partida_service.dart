@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'subscription_service.dart'; // ✅ importa para usar keyIsPremium
@@ -5,6 +6,17 @@ import 'subscription_service.dart'; // ✅ importa para usar keyIsPremium
 class PartidaService {
   static const String _keyPartidas = 'partidas';
   static const String _keyJugadores = 'jugadores';
+
+  // ── REACCIÓN EN TIEMPO REAL ──
+  // Usamos un StreamController estático para notificar a toda la app cuando cambia el historial
+  static final StreamController<void> _partidasUpdateController = StreamController<void>.broadcast();
+  Stream<void> get partidasUpdateStream => _partidasUpdateController.stream;
+
+  void _notifyUpdate() {
+    if (!_partidasUpdateController.isClosed) {
+      _partidasUpdateController.add(null);
+    }
+  }
 
   // limites jugadores
   static const int _limiteNormal = 8;
@@ -84,6 +96,7 @@ class PartidaService {
     raw.insert(0, jsonEncode(nuevaPartida));
 
     await prefs.setStringList(_keyPartidas, raw);
+    _notifyUpdate();
 
     await guardarJugadores([...equipoA, ...equipoB]);
   }
@@ -102,11 +115,13 @@ class PartidaService {
     }).toList();
 
     await prefs.setStringList(_keyPartidas, actualizado);
+    _notifyUpdate();
   }
 
   Future<void> eliminarTodoElHistorial() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_keyPartidas);
+    _notifyUpdate();
   }
 
   Stream<List<Map<String, dynamic>>> getHistorial() async* {
@@ -203,6 +218,7 @@ class PartidaService {
     }
 
     await prefs.setStringList(_keyPartidas, actualizadas);
+    _notifyUpdate();
   }
 
   // ─────────────────────────────────────────
@@ -288,5 +304,30 @@ class PartidaService {
     }
 
     return victorias;
+  }
+
+  /// ✅ Obtiene el número de victorias acumuladas de una pareja de jugadores
+  Future<int> getVictoriesForTeam(List<String> teamPlayers) async {
+    final partidas = await getPartidas();
+    int count = 0;
+
+    // Normalizamos nombres (orden alfabético e uppercase para que coincidan siempre)
+    final teamNorm = List<String>.from(teamPlayers.map((e) => e.trim().toUpperCase()))..sort();
+    final teamStr = teamNorm.join(' & ');
+
+    for (final p in partidas) {
+      final ganador = p['ganador'];
+      final equipoGanadorRaw = ganador == 'equipoA'
+          ? List<String>.from(p['equipoA'] ?? [])
+          : List<String>.from(p['equipoB'] ?? []);
+      
+      final eqGanNorm = List<String>.from(equipoGanadorRaw.map((e) => e.trim().toUpperCase()))..sort();
+      final eqGanStr = eqGanNorm.join(' & ');
+
+      if (teamStr == eqGanStr) {
+        count++;
+      }
+    }
+    return count;
   }
 }

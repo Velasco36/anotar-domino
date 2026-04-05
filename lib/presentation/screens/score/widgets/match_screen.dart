@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../../models/team_data.dart';
 import '../../../../services/partida_service.dart';
@@ -10,7 +11,15 @@ import 'edit_current_match_modal.dart';
 
 class MatchScreen extends StatefulWidget {
   final TeamData teamData;
-  const MatchScreen({Key? key, required this.teamData}) : super(key: key);
+  final int initialTeamAWins;
+  final int initialTeamBWins;
+
+  const MatchScreen({
+    Key? key, 
+    required this.teamData,
+    this.initialTeamAWins = 0,
+    this.initialTeamBWins = 0,
+  }) : super(key: key);
 
   @override
   _MatchScreenState createState() => _MatchScreenState();
@@ -19,6 +28,7 @@ class MatchScreen extends StatefulWidget {
 class _MatchScreenState extends State<MatchScreen>
     with SingleTickerProviderStateMixin {
   late TeamData _teamData;
+  StreamSubscription? _historySubscription;
 
   int teamAScore = 0;
   int teamBScore = 0;
@@ -43,6 +53,21 @@ class _MatchScreenState extends State<MatchScreen>
   void initState() {
     super.initState();
     _teamData = widget.teamData;
+    
+    // Si ya vienen victorias (ej. por navegación de "Continuar"), las usamos.
+    // De lo contrario, cargamos desde el historial (anclado a las estadísticas).
+    if (widget.initialTeamAWins > 0 || widget.initialTeamBWins > 0) {
+      teamAWins = widget.initialTeamAWins;
+      teamBWins = widget.initialTeamBWins;
+    } else {
+      _loadHistoryWins();
+    }
+
+    // ✅ Suscribirse a cambios en el historial para actualizar en tiempo real
+    _historySubscription = _partidaService.partidasUpdateStream.listen((_) {
+      _loadHistoryWins();
+    });
+
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
@@ -52,8 +77,27 @@ class _MatchScreenState extends State<MatchScreen>
     );
   }
 
+  Future<void> _loadHistoryWins() async {
+    final winsA = await _partidaService.getVictoriesForTeam([
+      _teamData.teamAPlayer1,
+      _teamData.teamAPlayer2,
+    ]);
+    final winsB = await _partidaService.getVictoriesForTeam([
+      _teamData.teamBPlayer1,
+      _teamData.teamBPlayer2,
+    ]);
+
+    if (mounted) {
+      setState(() {
+        teamAWins = winsA;
+        teamBWins = winsB;
+      });
+    }
+  }
+
   @override
   void dispose() {
+    _historySubscription?.cancel();
     _animationController.dispose();
     super.dispose();
   }
@@ -91,9 +135,16 @@ class _MatchScreenState extends State<MatchScreen>
           : '${_teamData.teamBPlayer1} & ${_teamData.teamBPlayer2}';
       _showWinnerAnimation = true;
       _hideButtons = true;
+      
+      // Incrementamos las victorias globales de la serie de inmediato
+      if (!_partidaGuardada) {
+        if (isTeamA) teamAWins++; else teamBWins++;
+      }
     });
+
     _animationController.reset();
     _animationController.forward();
+
     if (!_partidaGuardada) {
       _partidaGuardada = true;
       _guardarPartidaFinalizada(isTeamA);
@@ -121,11 +172,6 @@ class _MatchScreenState extends State<MatchScreen>
   }
 
   void _continueToNextMatch() {
-    if (_calculateTeamAScore() >= targetScore)
-      teamAWins++;
-    else if (_calculateTeamBScore() >= targetScore)
-      teamBWins++;
-
     final matchSummary = {
       'teamData': _teamData,
       'teamAWins': teamAWins,

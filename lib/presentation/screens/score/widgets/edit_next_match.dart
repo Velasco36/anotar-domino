@@ -157,7 +157,11 @@ class _EditMatchSettingsScreenState extends State<EditMatchSettingsScreen> {
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(
-        builder: (context) => MatchScreen(teamData: updatedTeamData),
+        builder: (context) => MatchScreen(
+          teamData: updatedTeamData,
+          initialTeamAWins: _teamAWins,
+          initialTeamBWins: _teamBWins,
+        ),
       ),
       (route) => false,
     );
