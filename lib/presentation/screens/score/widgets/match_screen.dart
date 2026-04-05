@@ -13,12 +13,14 @@ class MatchScreen extends StatefulWidget {
   final TeamData teamData;
   final int initialTeamAWins;
   final int initialTeamBWins;
+  final int initialTargetScore;
 
   const MatchScreen({
     Key? key, 
     required this.teamData,
     this.initialTeamAWins = 0,
     this.initialTeamBWins = 0,
+    this.initialTargetScore = 100,
   }) : super(key: key);
 
   @override
@@ -53,6 +55,7 @@ class _MatchScreenState extends State<MatchScreen>
   void initState() {
     super.initState();
     _teamData = widget.teamData;
+    targetScore = widget.initialTargetScore;
     
     // Si ya vienen victorias (ej. por navegación de "Continuar"), las usamos.
     // De lo contrario, cargamos desde el historial (anclado a las estadísticas).
@@ -176,6 +179,7 @@ class _MatchScreenState extends State<MatchScreen>
       'teamData': _teamData,
       'teamAWins': teamAWins,
       'teamBWins': teamBWins,
+      'targetScore': targetScore,
       'finalTeamAScore': _calculateTeamAScore(),
       'finalTeamBScore': _calculateTeamBScore(),
       'winningTeam': _winningTeamName,

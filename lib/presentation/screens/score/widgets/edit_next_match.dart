@@ -40,6 +40,7 @@ class _EditMatchSettingsScreenState extends State<EditMatchSettingsScreen> {
   late int _teamAWins;
   late int _teamBWins;
   late String _winningTeam;
+  late int _targetScore;
 
   final PartidaService _partidaService = PartidaService();
   List<String> _jugadoresGuardados = [];
@@ -51,6 +52,7 @@ class _EditMatchSettingsScreenState extends State<EditMatchSettingsScreen> {
     _teamAWins = widget.matchData['teamAWins'] as int;
     _teamBWins = widget.matchData['teamBWins'] as int;
     _winningTeam = widget.matchData['winningTeam'] as String;
+    _targetScore = widget.matchData['targetScore'] ?? 100;
 
     _controllers = {
       'p1': TextEditingController(text: _originalTeamData.teamAPlayer1),
@@ -161,6 +163,7 @@ class _EditMatchSettingsScreenState extends State<EditMatchSettingsScreen> {
           teamData: updatedTeamData,
           initialTeamAWins: _teamAWins,
           initialTeamBWins: _teamBWins,
+          initialTargetScore: _targetScore,
         ),
       ),
       (route) => false,
